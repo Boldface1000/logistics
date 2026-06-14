@@ -31,3 +31,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.gitignore
+.prettierignore
+DEPLOY.md
+deploy.sh
+install.sh
+

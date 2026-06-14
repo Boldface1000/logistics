@@ -28,6 +28,33 @@ The dev server reads `.env` automatically. Cloud-managed env vars
 (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, etc.) are injected by
 the Lovable runtime — do not commit production secrets to `.env`.
 
+## 1.1 Cloudflare Pages preview deployment
+
+This project can publish to Cloudflare Pages under the project name
+`easybluelogistics`.
+
+- Use the existing GitHub repository: `https://github.com/Boldface1000/logistics`
+- In Cloudflare Pages, create a new site and set the **project name** to
+  `easybluelogistics` if available
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Set the following GitHub repository secrets:
+  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_ACCOUNT_ID`
+
+A GitHub Actions workflow has been added at
+`.github/workflows/cloudflare-pages.yml` to deploy automatically on
+push to `main`.
+
+If you prefer a local publish command, use:
+
+```bash
+npm run deploy:cloudflare
+```
+
+This command is ready to run once your Cloudflare Pages account is linked
+and the environment is configured.
+
 ---
 
 ## 2. Secrets to configure

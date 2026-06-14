@@ -4,12 +4,13 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
+    "dev": "node node_modules/vite/bin/vite.js dev",
+    "build": "node node_modules/vite/bin/vite.js build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:cloudflare": "npm run build && npx wrangler pages publish dist --project-name easybluelogistics"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

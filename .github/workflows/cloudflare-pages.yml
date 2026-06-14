@@ -1,0 +1,41 @@
+name: CI/CD Cloudflare Pages Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build & Deploy to Cloudflare Pages
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Project Dependencies
+        # Using --legacy-peer-deps to instantly bypass the Vite 7 / Cloudflare plugin version lock
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Compile Full-Stack Production Build
+        # Generates the true .output/ directory structure for TanStack Start
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Publish Direct to Cloudflare Pages via Wrangler
+        # We explicitly target the true .output/public asset cache and read wrangler.jsonc natively
+        run: npx wrangler pages deploy .output/public --project-name=easybluelogistics
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

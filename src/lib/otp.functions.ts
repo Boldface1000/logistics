@@ -7,7 +7,7 @@
  *
  * Storage: `public.otp_codes` (server-role only). We store sha256(code), not
  * the code itself.
- *
+
  * Hardening:
  *   - Rate limit: max 3 sends per email per 15 minutes (rate_limits table).
  *   - Verify: max 5 attempts per code, expires in 10 minutes, single-use.
@@ -17,12 +17,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const EmailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .email()
-  .max(254);
+const EmailSchema = z.string().trim().toLowerCase().email().max(254);
 
 const CodeSchema = z.string().regex(/^\d{6}$/);
 
@@ -32,10 +27,7 @@ const VERIFY_MAX_ATTEMPTS = 5;
 const TTL_MIN = 10;
 
 async function sha256Hex(input: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(input),
-  );
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -98,7 +90,7 @@ async function sendEmail(to: string, code: string): Promise<"sent" | "logged"> {
 export const sendSignupOtp = createServerFn({ method: "POST" })
   .inputValidator((raw) => z.object({ email: EmailSchema }).parse(raw))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/client.server");
     const email = data.email;
     const bucket = `otp_send:${email}`;
     const windowStart = new Date(Date.now() - SEND_WINDOW_MIN * 60_000).toISOString();
@@ -132,11 +124,9 @@ export const sendSignupOtp = createServerFn({ method: "POST" })
 // VERIFY
 // --------------------------------------------------------------------------
 export const verifySignupOtp = createServerFn({ method: "POST" })
-  .inputValidator((raw) =>
-    z.object({ email: EmailSchema, code: CodeSchema }).parse(raw),
-  )
+  .inputValidator((raw) => z.object({ email: EmailSchema, code: CodeSchema }).parse(raw))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/client.server");
     const { email, code } = data;
     const code_hash = await sha256Hex(code);
 
@@ -170,10 +160,7 @@ export const verifySignupOtp = createServerFn({ method: "POST" })
       .eq("id", row.id);
 
     // Mark the profile as verified if it already exists.
-    await supabaseAdmin
-      .from("profiles")
-      .update({ is_email_verified: true })
-      .eq("email", email);
+    await supabaseAdmin.from("profiles").update({ is_email_verified: true }).eq("email", email);
 
     return { ok: true as const };
   });

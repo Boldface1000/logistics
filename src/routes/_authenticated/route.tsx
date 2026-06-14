@@ -15,12 +15,8 @@
  *      can read it with `Route.useRouteContext().auth` instead of
  *      re-querying Supabase.
  */
-import {
-  Outlet,
-  createFileRoute,
-  redirect,
-} from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/client";
 import type { AppRole, Profile } from "@/types/database.types";
 
 export interface AuthContext {
@@ -51,8 +47,7 @@ export const Route = createFileRoute("/_authenticated")({
       supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     ]);
 
-    const roles: AppRole[] =
-      (rolesRes.data ?? []).map((r) => r.role as AppRole) ?? [];
+    const roles: AppRole[] = (rolesRes.data ?? []).map((r) => r.role as AppRole) ?? [];
     const profile: Profile | null = profileRes.data ?? null;
 
     const auth: AuthContext = {

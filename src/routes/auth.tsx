@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, User as UserIcon, ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/client";
 import { sendSignupOtp, verifySignupOtp } from "@/lib/otp.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,7 +62,9 @@ function AuthPage() {
     e.preventDefault();
     setPending(true);
     try {
-      const parsed = z.object({ email: EmailSchema, password: PasswordSchema }).parse({ email, password });
+      const parsed = z
+        .object({ email: EmailSchema, password: PasswordSchema })
+        .parse({ email, password });
       const { error } = await supabase.auth.signInWithPassword(parsed);
       if (error) throw error;
       toast.success("Welcome back");
@@ -90,7 +92,11 @@ function AuthPage() {
 
       // Send OTP first; account creation happens after verification.
       const res = await sendOtp({ data: { email: parsed.email } });
-      toast.success(res.mode === "sent" ? "Code sent to your email" : "Code generated (check server logs in dev)");
+      toast.success(
+        res.mode === "sent"
+          ? "Code sent to your email"
+          : "Code generated (check server logs in dev)",
+      );
       setMode("verify");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send code");
@@ -107,9 +113,11 @@ function AuthPage() {
       const result = await verifyOtp({ data: { email, code: codeParsed.code } });
       if (!result.ok) {
         toast.error(
-          result.reason === "expired" ? "Code expired — request a new one"
-          : result.reason === "too_many_attempts" ? "Too many attempts — request a new code"
-          : "Wrong code",
+          result.reason === "expired"
+            ? "Code expired — request a new one"
+            : result.reason === "too_many_attempts"
+              ? "Too many attempts — request a new code"
+              : "Wrong code",
         );
         return;
       }
@@ -149,12 +157,19 @@ function AuthPage() {
       <div className="flex-1 overflow-y-auto px-6 pt-14 pb-10">
         <header className="mb-8">
           {mode === "verify" && (
-            <button onClick={() => setMode("signup")} className="mb-3 inline-flex items-center text-sm text-muted-foreground">
+            <button
+              onClick={() => setMode("signup")}
+              className="mb-3 inline-flex items-center text-sm text-muted-foreground"
+            >
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </button>
           )}
           <h1 className="text-3xl font-bold text-foreground">
-            {mode === "signin" ? "Welcome back" : mode === "signup" ? "Create account" : "Verify email"}
+            {mode === "signin"
+              ? "Welcome back"
+              : mode === "signup"
+                ? "Create account"
+                : "Verify email"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "verify"
@@ -165,25 +180,88 @@ function AuthPage() {
 
         {mode === "signin" && (
           <form onSubmit={handleSignIn} className="space-y-3">
-            <TextField icon={<Mail className="h-4 w-4" />} type="email" placeholder="Email" value={email} onChange={setEmail} autoComplete="email" />
-            <TextField icon={<Lock className="h-4 w-4" />} type="password" placeholder="Password" value={password} onChange={setPassword} autoComplete="current-password" />
+            <TextField
+              icon={<Mail className="h-4 w-4" />}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+            />
+            <TextField
+              icon={<Lock className="h-4 w-4" />}
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+            />
             <SubmitButton pending={pending}>Sign in</SubmitButton>
             <p className="text-center text-sm text-muted-foreground pt-2">
-              No account? <button type="button" onClick={() => setMode("signup")} className="text-primary font-semibold">Sign up</button>
+              No account?{" "}
+              <button
+                type="button"
+                onClick={() => setMode("signup")}
+                className="text-primary font-semibold"
+              >
+                Sign up
+              </button>
             </p>
           </form>
         )}
 
         {mode === "signup" && (
           <form onSubmit={handleSendOtp} className="space-y-3">
-            <TextField icon={<UserIcon className="h-4 w-4" />} placeholder="First name" value={firstName} onChange={setFirstName} maxLength={60} autoComplete="given-name" />
-            <TextField icon={<UserIcon className="h-4 w-4" />} placeholder="Last name" value={lastName} onChange={setLastName} maxLength={60} autoComplete="family-name" />
-            <TextField icon={<Mail className="h-4 w-4" />} type="email" placeholder="Email" value={email} onChange={setEmail} autoComplete="email" />
-            <TextField placeholder="Phone (+234…)" value={phone} onChange={setPhone} maxLength={16} autoComplete="tel" inputMode="tel" />
-            <TextField icon={<Lock className="h-4 w-4" />} type="password" placeholder="Password (8+ chars)" value={password} onChange={setPassword} autoComplete="new-password" />
+            <TextField
+              icon={<UserIcon className="h-4 w-4" />}
+              placeholder="First name"
+              value={firstName}
+              onChange={setFirstName}
+              maxLength={60}
+              autoComplete="given-name"
+            />
+            <TextField
+              icon={<UserIcon className="h-4 w-4" />}
+              placeholder="Last name"
+              value={lastName}
+              onChange={setLastName}
+              maxLength={60}
+              autoComplete="family-name"
+            />
+            <TextField
+              icon={<Mail className="h-4 w-4" />}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+            />
+            <TextField
+              placeholder="Phone (+234…)"
+              value={phone}
+              onChange={setPhone}
+              maxLength={16}
+              autoComplete="tel"
+              inputMode="tel"
+            />
+            <TextField
+              icon={<Lock className="h-4 w-4" />}
+              type="password"
+              placeholder="Password (8+ chars)"
+              value={password}
+              onChange={setPassword}
+              autoComplete="new-password"
+            />
             <SubmitButton pending={pending}>Send verification code</SubmitButton>
             <p className="text-center text-sm text-muted-foreground pt-2">
-              Have an account? <button type="button" onClick={() => setMode("signin")} className="text-primary font-semibold">Sign in</button>
+              Have an account?{" "}
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                className="text-primary font-semibold"
+              >
+                Sign in
+              </button>
             </p>
           </form>
         )}
@@ -199,7 +277,9 @@ function AuthPage() {
               placeholder="6-digit code"
               className="w-full h-14 text-center text-2xl tracking-[8px] font-bold rounded-2xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <SubmitButton pending={pending} disabled={otp.length !== 6}>Verify &amp; create account</SubmitButton>
+            <SubmitButton pending={pending} disabled={otp.length !== 6}>
+              Verify &amp; create account
+            </SubmitButton>
             <button
               type="button"
               onClick={async () => {
@@ -248,7 +328,9 @@ function TextField({
   return (
     <div className="relative">
       {icon && (
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</span>
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+          {icon}
+        </span>
       )}
       <input
         type={type}
