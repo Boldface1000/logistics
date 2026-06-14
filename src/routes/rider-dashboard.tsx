@@ -83,7 +83,7 @@ function RiderDashboard() {
               )}
             </>
           )}
-
+          
           {tab === "history" && (
             <>
               <h2 className="text-base font-bold text-foreground mb-3">History</h2>
