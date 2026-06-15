@@ -38,8 +38,13 @@ DO $$ BEGIN
   CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE payment_mode AS ENUM ('transfer', 'cash');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ---- Users -----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
+
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name    TEXT NOT NULL,
   last_name     TEXT NOT NULL,
@@ -129,17 +134,6 @@ CREATE INDEX IF NOT EXISTS idx_products_vendor ON products(vendor_id);
 CREATE TABLE IF NOT EXISTS orders (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id        UUID NOT NULL REFERENCES users(id),
-  order_type         order_type NOT NULL DEFAULT 'standard',
-  pickup_address     TEXT,
-  dropoff_address    TEXT,
-  item_description   TEXT,
-  total_cents        INTEGER NOT NULL DEFAULT 0 CHECK (total_cents >= 0),
-  status             shipment_status NOT NULL DEFAULT 'pending',
-  assigned_rider_id  UUID REFERENCES riders(id),
-  rider_response     rider_response NOT NULL DEFAULT 'pending',
-  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_rider ON orders(assigned_rider_id);

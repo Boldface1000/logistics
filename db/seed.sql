@@ -22,7 +22,7 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Vendor + products
 INSERT INTO vendors (id, user_id, registered_business_name, business_phone, rating, approval) VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'Bola Mart Logistics Ltd.', '+2348010000002', 4.80, 'approved')
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'vita fruity', '+2348010000002', 4.80, 'approved')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO products (vendor_id, name, description, price_cents, partner_price_cents, stock) VALUES

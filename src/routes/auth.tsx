@@ -68,6 +68,34 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword(parsed);
       if (error) throw error;
       toast.success("Welcome back");
+      // Role-based redirect using Supabase roles
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        navigate({ to: "/dashboard" });
+        return;
+      }
+      const [rolesRes] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userData.user.id),
+      ]);
+      const roles = (rolesRes.data ?? []).map((r) => r.role as string);
+
+      // Admins
+      if (roles.includes("admin") || roles.includes("super_admin")) {
+        navigate({ to: "/admin" });
+        return;
+      }
+
+      // Riders / Vendors
+      if (roles.includes("rider")) {
+        navigate({ to: "/rider-dashboard" });
+        return;
+      }
+      if (roles.includes("vendor")) {
+        navigate({ to: "/vendor-dashboard" });
+        return;
+      }
+
+      // Customers fallback
       navigate({ to: "/dashboard" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign-in failed");

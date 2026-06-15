@@ -1,6 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, Store, Sliders, Bike, Zap, Wallet, MapPin, ChevronRight, Truck } from "lucide-react";
+import {
+  Users,
+  Store,
+  Sliders,
+  Bike,
+  Zap,
+  Wallet,
+  MapPin,
+  ChevronRight,
+  Truck,
+} from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 
@@ -8,7 +18,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "EasyBlue Logistics — Ship Globally, Deliver Locally" },
-      { name: "description", content: "International shipping merged with local dispatch with partner discounts." },
+      { name: "description", content: "International shipping merged with local dispatch." },
     ],
   }),
   component: WelcomePage,
@@ -82,7 +92,9 @@ function WelcomePage() {
           </div>
           <div>
             <h1 className="text-base font-bold leading-tight text-foreground">EasyBlue</h1>
-            <p className="text-[10px] text-muted-foreground -mt-0.5 uppercase tracking-widest">Logistics</p>
+            <p className="text-[10px] text-muted-foreground -mt-0.5 uppercase tracking-widest">
+              Logistics
+            </p>
           </div>
         </div>
         <DarkModeToggle />
@@ -90,8 +102,11 @@ function WelcomePage() {
 
       <div className="px-5 pb-4">
         <p className="text-sm text-muted-foreground leading-snug">
-          International shipping merged with local dispatch.<br />
-          <span className="text-foreground font-medium">Partner discounts, always-on tracking.</span>
+          International shipping merged with local dispatch.
+          <br />
+          <span className="text-foreground font-medium">
+            Partner discounts, always-on tracking.
+          </span>
         </p>
       </div>
 
@@ -103,7 +118,9 @@ function WelcomePage() {
               key={i}
               className={`absolute inset-0 transition-opacity duration-700 ${i === idx ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             >
-              <div className={`h-1/2 bg-gradient-to-br ${s.accent} text-primary-foreground flex items-center justify-center`}>
+              <div
+                className={`h-1/2 bg-gradient-to-br ${s.accent} text-primary-foreground flex items-center justify-center`}
+              >
                 <div className="relative">
                   <div className="absolute inset-0 blur-2xl opacity-50 bg-white/30 rounded-full" />
                   <div className="relative">{s.icons}</div>
@@ -139,7 +156,7 @@ function WelcomePage() {
           Get Started — Sign Up <ChevronRight className="h-5 w-5" />
         </Link>
         <Link
-          to="/login"
+          to="/auth"
           className="w-full py-3.5 rounded-2xl bg-secondary text-secondary-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition border border-border"
         >
           Sign In to Account

@@ -1,8 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
-  Home, Package, MapPin, Settings as SettingsIcon, Truck, Clock,
-  ChevronRight, ArrowRight, Navigation, CheckCircle2, LogOut, Moon, Sun, ShieldCheck,
+  Home,
+  Package,
+  MapPin,
+  Settings as SettingsIcon,
+  Truck,
+  ChevronRight,
+  Navigation,
+  LogOut,
+  Moon,
+  Sun,
+  ShieldCheck,
+  Bike,
+  ArrowRight,
 } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
@@ -18,6 +29,20 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 type Tab = "home" | "orders" | "tracking" | "settings";
+
+type DashboardHomeNav = "/marketplace" | "/park-waybill" | "/standard-booking" | "/stocks";
+
+type AccentVar = "amber" | "cyan" | "emerald" | "zinc";
+
+type StatusKey = "pending" | "accepted" | "in_transit" | "delivered" | "cancelled";
+
+const STATUS_LABEL: Record<StatusKey, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  in_transit: "In Transit",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
 
 function useOrders() {
   return useSyncExternalStore(
@@ -41,13 +66,21 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
     setUser(u);
   }, []);
 
-  if (loading) return <MobileShell><PageLoader label={variant === "vendor" ? "Vendor Dashboard" : "Dashboard"} /></MobileShell>;
+  if (loading)
+    return (
+      <MobileShell>
+        <PageLoader label={variant === "vendor" ? "Vendor Dashboard" : "Dashboard"} />
+      </MobileShell>
+    );
 
   const displayName = user?.firstName ?? (variant === "vendor" ? "Partner" : "Guest");
   const myOrders = user ? ordersStore.byCustomer(user.email) : [];
   const pendingForBadge = myOrders.filter((o) => o.status !== "delivered").length;
 
-  const openTracking = (id: string) => { setActiveOrderId(id); setTab("tracking"); };
+  const openTracking = (id: string) => {
+    setActiveOrderId(id);
+    setTab("tracking");
+  };
 
   const navTabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "home", label: "Home", icon: <Home className="h-[22px] w-[22px]" /> },
@@ -62,21 +95,24 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
         {tab === "home" && (
           <HomeHero name={displayName} variant={variant} onGo={(to) => navigate({ to })} />
         )}
-        {tab === "orders" && (
-          <OrdersPanel orders={myOrders} onView={openTracking} />
-        )}
+        {tab === "orders" && <OrdersPanel orders={myOrders} onView={openTracking} />}
         {tab === "tracking" && (
           <TrackingPanel orders={myOrders} activeId={activeOrderId} onPick={setActiveOrderId} />
         )}
         {tab === "settings" && (
-          <SettingsPanel user={user} onSignOut={() => { auth.signOut(); navigate({ to: "/" }); }} />
+          <SettingsPanel
+            user={user}
+            onSignOut={() => {
+              auth.signOut();
+              navigate({ to: "/" });
+            }}
+          />
         )}
         <div style={{ height: "10px" }} />
       </main>
 
       <SupportChat />
 
-      {/* Sticky bottom navbar — sits at bottom of flex column, scrolls away with content */}
       <nav
         className="mt-auto mx-4 mb-2 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
                    border border-white/30 dark:border-white/10
@@ -93,8 +129,11 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
               onClick={() => setTab(t.id)}
               aria-label={t.label}
               className={`relative h-11 w-11 rounded-full flex items-center justify-center transition active:scale-90 ${
-                active ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" : "text-foreground/80"
+                active
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                  : "text-foreground/80"
               }`}
+              type="button"
             >
               {t.icon}
               {showDot && (
@@ -108,18 +147,60 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
   );
 }
 
-/* -------------------- HOME HERO -------------------- */
-
-function HomeHero({ name, variant, onGo }: { name: string; variant: "customer" | "vendor"; onGo: (to: "/marketplace" | "/park-waybill" | "/standard-booking" | "/stocks") => void }) {
-  const buttons: { label: string; to: "/marketplace" | "/park-waybill" | "/standard-booking" | "/stocks" }[] = [
-    { label: "Marketplace", to: "/marketplace" },
-    { label: "Park Waybill", to: "/park-waybill" },
-    { label: "Local Delivery", to: "/standard-booking" },
-    ...(variant === "vendor" ? [{ label: "Stocks" as const, to: "/stocks" as const }] : []),
+function HomeHero({
+  name,
+  variant,
+  onGo,
+}: {
+  name: string;
+  variant: "customer" | "vendor";
+  onGo: (to: DashboardHomeNav) => void;
+}) {
+  const buttons: {
+    header: string;
+    subheader: string;
+    label: string;
+    to: DashboardHomeNav;
+    icon: React.ReactNode;
+    accentVar: AccentVar;
+  }[] = [
+    {
+      header: "Intra-State",
+      subheader: "Local Delivery",
+      label: "Intra-State",
+      to: "/standard-booking",
+      icon: <Bike className="h-5 w-5" />,
+      accentVar: "amber",
+    },
+    {
+      header: "Inter-State",
+      subheader: "Import/Export",
+      label: "Inter-State",
+      to: "/standard-booking",
+      icon: <Truck className="h-5 w-5" />,
+      accentVar: "zinc",
+    },
+    {
+      header: "Park Waybill",
+      subheader: "Inter-park parcel transit",
+      label: "Park Waybill",
+      to: "/park-waybill",
+      icon: <Truck className="h-5 w-5" />,
+      accentVar: "cyan",
+    },
+    {
+      // 4th bubble requirement
+      header: variant === "vendor" ? "Stocks" : "Marketplace",
+      subheader: variant === "vendor" ? "Inventory updates" : "Partner pricing",
+      label: variant === "vendor" ? "Stocks" : "Marketplace",
+      to: "/marketplace",
+      icon: <Package className="h-5 w-5" />,
+      accentVar: "emerald",
+    },
   ];
+
   return (
     <>
-      {/* Primary hero with bottom corners rounded 12px */}
       <section
         className="safe-top px-5 pt-2 pb-6 bg-primary text-primary-foreground"
         style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}
@@ -131,49 +212,110 @@ function HomeHero({ name, variant, onGo }: { name: string; variant: "customer" |
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest opacity-70">EasyBlue</p>
-              <p className="text-xs font-bold leading-tight">{variant === "vendor" ? "Vendor" : "Customer"}</p>
+              <p className="text-xs font-bold leading-tight">
+                {variant === "vendor" ? "Vendor" : "Customer"}
+              </p>
             </div>
           </div>
         </div>
 
         <h1 className="text-2xl font-bold leading-tight">Hello, {name}</h1>
         <p className="text-sm opacity-80 mt-1">How may we help you today?</p>
-
-        {/* 2-column grid of white bubble buttons, midnight blue text */}
-        <div className="mt-5 grid grid-cols-2 gap-2.5">
-          {buttons.map((b) => (
-            <BubbleButton key={b.label} label={b.label} onClick={() => onGo(b.to)} />
-          ))}
-        </div>
       </section>
 
       <div className="px-4 pt-5">
-        <h2 className="text-sm font-bold text-foreground mb-2">Tips</h2>
-        <div className="rounded-2xl bg-card border border-border p-4">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Pick a service above to start. After you place an order, the records desk will assign a rider and you'll see live updates in <span className="text-foreground font-semibold">Orders</span> and <span className="text-foreground font-semibold">Tracking</span>.
-          </p>
+        <h2 className="text-sm font-bold text-foreground mb-3">Delivery Scope</h2>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {buttons.map((b) => (
+            <BubbleButton
+              key={b.header}
+              header={b.header}
+              subheader={b.subheader}
+              icon={b.icon}
+              accentVar={b.accentVar}
+              onClick={() => onGo(b.to)}
+            />
+          ))}
+        </div>
+
+        <div className="pt-3 text-[11px] text-muted-foreground">
+          Note: Intra-State and Inter-State use the same form.
+        </div>
+
+        <div className="pt-5">
+          <h2 className="text-sm font-bold text-foreground mb-2">Tips</h2>
+          <div className="rounded-2xl bg-card border border-border p-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Pick a service above to start. After you place an order, the records desk will assign
+              a rider and you'll see live updates in{" "}
+              <span className="text-foreground font-semibold">Orders</span> and{" "}
+              <span className="text-foreground font-semibold">Tracking</span>.
+            </p>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-function BubbleButton({ label, onClick }: { label: string; onClick: () => void }) {
+function BubbleButton({
+  header,
+  subheader,
+  icon,
+  onClick,
+  accentVar,
+}: {
+  header: string;
+  subheader: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  accentVar: AccentVar;
+}) {
+  const accentVarToCss =
+    accentVar === "amber"
+      ? "var(--color-amber-500)"
+      : accentVar === "cyan"
+        ? "var(--color-cyan-500)"
+        : accentVar === "zinc"
+          ? "var(--color-zinc-500)"
+          : "var(--color-emerald-500)";
+
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center py-4 px-3 rounded-2xl
-                 bg-white text-[#191970] font-bold text-sm
-                 border border-white/40 backdrop-blur-xl
+      style={{
+        backgroundImage:
+          "linear-gradient(to bottom right, color-mix(in oklab, var(--color-amber-500) 20%, transparent), color-mix(in oklab, var(--color-cyan-500) 20%, transparent))",
+      }}
+      className="h-20 relative overflow-hidden flex items-start gap-2 px-3 py-3 rounded-2xl
+                 font-bold text-sm text-[#191970]
+                 border backdrop-blur-xl backdrop-brightness-125
                  active:scale-95 transition shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+      type="button"
+      aria-label={header}
+      data-accent={accentVarToCss}
     >
-      {label}
+      <span
+        aria-hidden
+        className="absolute inset-0 rounded-2xl"
+        style={{
+          background: "color-mix(in oklab, rgba(255,255,255,0.28) 65%, " + accentVarToCss + " 35%)",
+          border:
+            "1px solid color-mix(in oklab, " + accentVarToCss + " 35%, rgba(255,255,255,0.35) 65%)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+        }}
+      />
+      <span className="relative z-10 flex items-center justify-center h-9 w-9 rounded-xl">
+        <span className="text-[#191970]">{icon}</span>
+      </span>
+      <span className="relative z-10 flex-1 min-w-0 text-left">
+        <span className="block text-[11px] font-bold opacity-90">{header}</span>
+        <span className="block text-[10px] font-semibold opacity-80 truncate">{subheader}</span>
+      </span>
     </button>
   );
 }
-
-/* -------------------- ORDERS -------------------- */
 
 function OrdersPanel({ orders, onView }: { orders: OrderRecord[]; onView: (id: string) => void }) {
   const active = orders.filter((o) => o.status !== "delivered");
@@ -186,73 +328,86 @@ function OrdersPanel({ orders, onView }: { orders: OrderRecord[]; onView: (id: s
       {orders.length === 0 ? (
         <div className="text-center py-12 rounded-2xl bg-card border border-border">
           <Package className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">No orders yet — place one from the home screen.</p>
+          <p className="text-sm text-muted-foreground">
+            No orders yet — place one from the home screen.
+          </p>
         </div>
       ) : (
         <>
-          {active.length > 0 && <Section title="In progress" count={active.length} accent="bg-cta">
-            {active.map((o) => <OrderRow key={o.id} order={o} onView={onView} />)}
-          </Section>}
-          {completed.length > 0 && <Section title="Completed" count={completed.length} accent="bg-success">
-            {completed.map((o) => <OrderRow key={o.id} order={o} onView={onView} />)}
-          </Section>}
+          {active.length > 0 && (
+            <Section title="In progress" count={active.length} accent="bg-cta">
+              {active.map((o) => (
+                <OrderRow key={o.id} order={o} onView={onView} />
+              ))}
+            </Section>
+          )}
+          {completed.length > 0 && (
+            <Section title="Completed" count={completed.length} accent="bg-success">
+              {completed.map((o) => (
+                <OrderRow key={o.id} order={o} onView={onView} />
+              ))}
+            </Section>
+          )}
         </>
       )}
     </div>
   );
 }
 
-function Section({ title, count, accent, children }: { title: string; count: number; accent: string; children: React.ReactNode }) {
+function Section({
+  title,
+  count,
+  accent,
+  children,
+}: {
+  title: string;
+  count: number;
+  accent: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mb-5">
-      <div className="flex items-center gap-2 mb-2.5">
-        <span className={`h-2 w-2 rounded-full ${accent}`} />
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground">({count})</span>
+        <span
+          className={`text-[11px] font-bold px-2 py-1 rounded-full bg-card ${accent} text-primary-foreground`}
+        >
+          {count}
+        </span>
       </div>
-      <div className="flex flex-col gap-2">{children}</div>
+      <div className="space-y-2">{children}</div>
     </div>
   );
 }
-
-const STATUS_LABEL: Record<OrderRecord["status"], string> = {
-  pending: "Awaiting dispatch",
-  assigned: "Rider assigned — awaiting acceptance",
-  accepted: "Rider accepted — preparing pickup",
-  declined: "Reassigning rider",
-  in_transit: "In transit",
-  delivered: "Delivered",
-};
 
 function OrderRow({ order, onView }: { order: OrderRecord; onView: (id: string) => void }) {
-  const Icon = order.status === "delivered" ? CheckCircle2 : order.status === "in_transit" ? Truck : Clock;
-  const tone = order.status === "delivered" ? "bg-success/10 text-success" : order.status === "in_transit" ? "bg-primary/10 text-primary" : "bg-cta/10 text-cta";
   return (
-    <div className="p-3.5 rounded-2xl bg-card border border-border">
-      <div className="flex items-center gap-3">
-        <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{order.itemDescription}</p>
-          <p className="text-xs text-muted-foreground">{order.id} · {STATUS_LABEL[order.status]}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    <button
+      onClick={() => onView(order.id)}
+      className="w-full text-left p-4 rounded-2xl bg-card border border-border flex items-center justify-between gap-3 active:scale-[0.99]"
+      type="button"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-foreground truncate">{order.itemDescription}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {order.id} · {STATUS_LABEL[order.status as StatusKey] ?? order.status}
+        </p>
       </div>
-      <button
-        onClick={() => onView(order.id)}
-        className="mt-2 text-xs font-semibold text-primary flex items-center gap-1 active:opacity-70"
-      >
-        View details <ArrowRight className="h-3 w-3" />
-      </button>
-    </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+    </button>
   );
 }
 
-/* -------------------- TRACKING -------------------- */
-
-function TrackingPanel({ orders, activeId, onPick }: { orders: OrderRecord[]; activeId: string | null; onPick: (id: string) => void }) {
-  const active = orders.find((o) => o.id === activeId) ?? orders[0];
+function TrackingPanel({
+  orders,
+  activeId,
+  onPick,
+}: {
+  orders: OrderRecord[];
+  activeId: string | null;
+  onPick: (id: string) => void;
+}) {
+  const active = (activeId ? orders.find((o) => o.id === activeId) : null) ?? orders[0];
 
   if (!active) {
     return (
@@ -269,7 +424,9 @@ function TrackingPanel({ orders, activeId, onPick }: { orders: OrderRecord[]; ac
   return (
     <div className="safe-top px-5 pt-2">
       <h2 className="text-xl font-bold text-foreground mb-1">Live Tracking</h2>
-      <p className="text-xs text-muted-foreground mb-3">{active.id} · {active.itemDescription}</p>
+      <p className="text-xs text-muted-foreground mb-3">
+        {active.id} · {active.itemDescription}
+      </p>
 
       {orders.length > 1 && (
         <select
@@ -277,41 +434,72 @@ function TrackingPanel({ orders, activeId, onPick }: { orders: OrderRecord[]; ac
           onChange={(e) => onPick(e.target.value)}
           className="mb-3 w-full h-10 px-3 rounded-xl bg-input border border-border text-sm text-foreground"
         >
-          {orders.map((o) => <option key={o.id} value={o.id}>{o.id} · {o.itemDescription}</option>)}
+          {orders.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.id} · {o.itemDescription}
+            </option>
+          ))}
         </select>
       )}
 
-      {/* Mock map */}
       <div className="relative h-60 rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-secondary to-accent mb-4">
         <svg className="absolute inset-0 w-full h-full opacity-30">
           <defs>
             <pattern id="gd" width="22" height="22" patternUnits="userSpaceOnUse">
-              <path d="M 22 0 L 0 0 0 22" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground" />
+              <path
+                d="M 22 0 L 0 0 0 22"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-muted-foreground"
+              />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#gd)" />
         </svg>
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 240" preserveAspectRatio="none">
-          <path d="M 30 210 Q 110 170 150 140 T 250 80 Q 310 55 370 45" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="6 6" className="text-primary" />
+
+        <svg
+          className="absolute inset-0 w-full h-full"
+          viewBox="0 0 400 240"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M 30 210 Q 110 170 150 140 T 250 80 Q 310 55 370 45"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray="6 6"
+            className="text-primary"
+          />
         </svg>
+
         <div className="absolute bottom-6 left-5 flex flex-col items-center">
           <div className="h-3 w-3 rounded-full bg-muted-foreground" />
-          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-1 shadow truncate max-w-[100px]">Pickup</span>
+          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-1 shadow truncate max-w-[100px]">
+            Pickup
+          </span>
         </div>
+
         {(active.status === "accepted" || active.status === "in_transit") && (
           <div className="absolute top-20 right-24 flex flex-col items-center animate-pulse">
             <div className="h-5 w-5 rounded-full bg-cta ring-4 ring-cta/30 flex items-center justify-center">
               <Navigation className="h-3 w-3 text-cta-foreground" />
             </div>
-            <span className="text-[9px] font-bold text-cta-foreground bg-cta px-1.5 py-0.5 rounded mt-1 shadow">Rider</span>
+            <span className="text-[9px] font-bold text-cta-foreground bg-cta px-1.5 py-0.5 rounded mt-1 shadow">
+              Rider
+            </span>
           </div>
         )}
+
         <div className="absolute top-5 right-4 flex flex-col items-center">
           <MapPin className="h-5 w-5 text-primary" />
-          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5 shadow">Drop-off</span>
+          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5 shadow">
+            Drop-off
+          </span>
         </div>
+
         <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground bg-card/80 px-2 py-1 rounded">
-          {STATUS_LABEL[active.status]}
+          {STATUS_LABEL[active.status as StatusKey] ?? active.status}
         </div>
       </div>
 
@@ -319,7 +507,7 @@ function TrackingPanel({ orders, activeId, onPick }: { orders: OrderRecord[]; ac
         <Row label="Pickup" value={active.pickup} />
         <Row label="Drop-off" value={active.dropoff} />
         <Row label="Rider" value={active.assignedRiderName ?? "—"} />
-        <Row label="Status" value={STATUS_LABEL[active.status]} />
+        <Row label="Status" value={STATUS_LABEL[active.status as StatusKey] ?? active.status} />
       </div>
     </div>
   );
@@ -334,35 +522,54 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* -------------------- SETTINGS -------------------- */
-
 function SettingsPanel({ user, onSignOut }: { user: AuthUser | null; onSignOut: () => void }) {
   const { theme, toggle } = useTheme();
+
   return (
     <div className="safe-top px-5 pt-2">
       <h2 className="text-xl font-bold text-foreground mb-4">Settings</h2>
 
       <ProfileHeader user={user} />
 
-
-      <button onClick={toggle} className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]">
-        {theme === "dark" ? <Sun className="h-5 w-5 text-cta" /> : <Moon className="h-5 w-5 text-primary" />}
+      <button
+        onClick={toggle}
+        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]"
+        type="button"
+      >
+        {theme === "dark" ? (
+          <Sun className="h-5 w-5 text-cta" />
+        ) : (
+          <Moon className="h-5 w-5 text-primary" />
+        )}
         <span className="text-sm font-semibold text-foreground flex-1 text-left">Dark mode</span>
         <span className="text-xs text-muted-foreground">{theme === "dark" ? "On" : "Off"}</span>
       </button>
 
-      <Link to="/terms" className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]">
+      <Link
+        to="/terms"
+        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]"
+      >
         <ShieldCheck className="h-5 w-5 text-primary" />
         <span className="text-sm font-semibold text-foreground flex-1 text-left">Terms of Use</span>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
-      <Link to="/privacy" className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-3 active:scale-[0.99]">
+
+      <Link
+        to="/privacy"
+        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-3 active:scale-[0.99]"
+      >
         <ShieldCheck className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold text-foreground flex-1 text-left">Privacy & Security</span>
+        <span className="text-sm font-semibold text-foreground flex-1 text-left">
+          Privacy & Security
+        </span>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Link>
 
-      <button onClick={onSignOut} className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm">
+      <button
+        onClick={onSignOut}
+        className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm"
+        type="button"
+      >
         <LogOut className="h-5 w-5" />
         Sign out
       </button>

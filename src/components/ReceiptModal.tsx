@@ -29,13 +29,23 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
     ["Time", time],
     ["Order Type", order.type.toUpperCase()],
     ["Status", order.status.replace("_", " ").toUpperCase()],
+
     ["Customer", `${order.customerFirstName} ${order.customerLastName}`],
     ["Phone", order.customerPhone || "—"],
     ["Email", order.customerEmail],
     ["User Type", (userType ?? "customer").toUpperCase()],
     ["Rider", order.assignedRiderName ?? "Unassigned"],
-    ["Pickup", order.pickup],
-    ["Drop-off", order.dropoff],
+
+    ["Sender Name", order.senderName],
+    ["Sender Location", order.senderLocation],
+    ["Sender Phone", order.senderPhone],
+
+    ["Receiver Name", order.receiverName],
+    ["Receiver Location", order.receiverLocation],
+    ["Receiver Phone", order.receiverPhone],
+
+    ["Payment Mode", order.paymentMode.toUpperCase()],
+
     ["Item", order.itemDescription],
     ["Amount", amount],
   ];
@@ -86,10 +96,16 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
       setBusy(true);
       const doc = buildPdf();
       const blob = doc.output("blob");
-      const file = new File([blob], `easyblue-receipt-${order.id}.pdf`, { type: "application/pdf" });
+      const file = new File([blob], `easyblue-receipt-${order.id}.pdf`, {
+        type: "application/pdf",
+      });
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       if (nav.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file], title: `EasyBlue Receipt ${order.id}`, text: `Receipt for ${order.id}` });
+        await nav.share({
+          files: [file],
+          title: `EasyBlue Receipt ${order.id}`,
+          text: `Receipt for ${order.id}`,
+        });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -121,7 +137,10 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
       </style></head><body>${html}</body></html>`);
     w.document.close();
     w.focus();
-    setTimeout(() => { w.print(); w.close(); }, 250);
+    setTimeout(() => {
+      w.print();
+      w.close();
+    }, 250);
   };
 
   return (
@@ -132,27 +151,45 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
         <div className="flex items-center justify-between px-4 py-2 bg-black text-white">
           <span className="font-mono text-xs tracking-widest">RECEIPT</span>
           <div className="flex items-center gap-1">
-            <button onClick={handlePrint} aria-label="Print" disabled={busy}
-              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center">
+            <button
+              onClick={handlePrint}
+              aria-label="Print"
+              disabled={busy}
+              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center"
+            >
               <Printer className="h-4 w-4" />
             </button>
-            <button onClick={handleDownload} aria-label="Download PDF" disabled={busy}
-              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center">
+            <button
+              onClick={handleDownload}
+              aria-label="Download PDF"
+              disabled={busy}
+              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center"
+            >
               <Download className="h-4 w-4" />
             </button>
-            <button onClick={handleShare} aria-label="Share" disabled={busy}
-              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center">
+            <button
+              onClick={handleShare}
+              aria-label="Share"
+              disabled={busy}
+              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center"
+            >
               <Share2 className="h-4 w-4" />
             </button>
-            <button onClick={() => onOpenChange(false)} aria-label="Close"
-              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center">
+            <button
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+              className="h-8 w-8 rounded hover:bg-white/15 flex items-center justify-center"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <div ref={ref} className="px-5 py-5 font-mono text-[12px] leading-relaxed max-h-[70vh] overflow-y-auto"
-             style={{ fontFamily: "'Courier New', ui-monospace, monospace" }}>
+        <div
+          ref={ref}
+          className="px-5 py-5 font-mono text-[12px] leading-relaxed max-h-[70vh] overflow-y-auto"
+          style={{ fontFamily: "'Courier New', ui-monospace, monospace" }}
+        >
           <h1 className="text-center text-xl font-bold tracking-[0.25em] m-0">EASYBLUE</h1>
           <p className="sub text-center text-[11px] mt-1 mb-3">OFFICIAL RECEIPT</p>
           <p className="sep text-center my-2">────────────────────────</p>

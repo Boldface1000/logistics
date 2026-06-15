@@ -39,6 +39,12 @@
 :root {
   --radius: 0.875rem;
 
+  /* Delivery Scope bubble colors */
+  --color-amber-500: oklch(0.7 0.16 85);
+  --color-cyan-500: oklch(0.7 0.14 200);
+  --color-emerald-500: oklch(0.65 0.16 160);
+  --color-zinc-500: oklch(0.55 0.06 250);
+
   /* EasyBlue brand */
   --background: oklch(0.985 0.005 250);
   --foreground: oklch(0.18 0.05 265);
@@ -119,7 +125,9 @@
   * {
     border-color: var(--color-border);
   }
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
   }
   body {
@@ -127,14 +135,39 @@
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+
+  /* Ensure Roboto is available for the UI */
+  @font-face {
+    font-family: "Roboto";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: local("Roboto"), local("Roboto-Regular");
   }
 }
 
 @layer utilities {
-  .safe-top { padding-top: max(env(safe-area-inset-top), 1rem); }
-  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
-  .no-tap-highlight { -webkit-tap-highlight-color: transparent; }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { scrollbar-width: none; }
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
 }

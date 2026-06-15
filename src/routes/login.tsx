@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -7,7 +7,9 @@ import { auth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign In — EasyBlue" }] }),
-  component: LoginPage,
+  beforeLoad: async () => {
+    throw redirect({ to: "/auth" });
+  },
 });
 
 function LoginPage() {
@@ -21,7 +23,9 @@ function LoginPage() {
     e.preventDefault();
     const user = auth.signIn(email, password);
     if (!user) {
-      toast.error("Invalid credentials", { description: "Check your email and password and try again." });
+      toast.error("Invalid credentials", {
+        description: "Check your email and password and try again.",
+      });
       return;
     }
     toast.success(`Welcome back, ${user.firstName}`);
@@ -31,7 +35,10 @@ function LoginPage() {
   return (
     <MobileShell>
       <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border">
-        <Link to="/" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95">
+        <Link
+          to="/"
+          className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex-1">
@@ -93,7 +100,9 @@ function LoginPage() {
               />
               <span className="text-sm text-foreground">Remember me</span>
             </label>
-            <button type="button" className="text-sm font-semibold text-primary">Forgot?</button>
+            <button type="button" className="text-sm font-semibold text-primary">
+              Forgot?
+            </button>
           </div>
 
           <button
@@ -105,14 +114,21 @@ function LoginPage() {
 
           <p className="text-xs text-muted-foreground text-center leading-relaxed mt-1">
             By signing in, you agree to our{" "}
-            <Link to="/terms" className="text-primary font-medium">Terms of Use</Link>
-            {" "}&{" "}
-            <Link to="/privacy" className="text-primary font-medium">Privacy & Security</Link>.
+            <Link to="/terms" className="text-primary font-medium">
+              Terms of Use
+            </Link>{" "}
+            &{" "}
+            <Link to="/privacy" className="text-primary font-medium">
+              Privacy & Security
+            </Link>
+            .
           </p>
 
           <p className="text-sm text-muted-foreground text-center mt-2">
             New here?{" "}
-            <Link to="/signup" className="text-primary font-semibold">Create an account</Link>
+            <Link to="/signup" className="text-primary font-semibold">
+              Create an account
+            </Link>
           </p>
         </form>
       </main>

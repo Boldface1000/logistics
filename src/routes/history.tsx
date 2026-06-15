@@ -36,7 +36,9 @@ function HistoryPage() {
   const [applied, setApplied] = useState<{ from: string; to: string } | null>(null);
   useOrders();
 
-  useEffect(() => { setUser(auth.current()); }, []);
+  useEffect(() => {
+    setUser(auth.current());
+  }, []);
 
   const allOrders = ordersStore.list();
 
@@ -65,7 +67,12 @@ function HistoryPage() {
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [scoped, applied]);
 
-  if (loading) return <MobileShell><PageLoader label="History" /></MobileShell>;
+  if (loading)
+    return (
+      <MobileShell>
+        <PageLoader label="History" />
+      </MobileShell>
+    );
 
   const proceed = () => {
     if (!from || !to) return;
@@ -82,23 +89,32 @@ function HistoryPage() {
     setApplied(null);
   };
 
-  const titleByRole = ({
-    customer: "Order History",
-    vendor: "Marketplace History",
-    rider: "Delivery History",
-    admin: "Transaction History",
-  } as const)[user?.role ?? "customer"];
+  const titleByRole = (
+    {
+      customer: "Order History",
+      vendor: "Marketplace History",
+      rider: "Delivery History",
+      admin: "Transaction History",
+    } as const
+  )[user?.role ?? "customer"];
 
   return (
     <MobileShell>
       <main className="flex-1 overflow-y-auto scrollbar-hide pb-24">
-        <header className="safe-top px-5 pt-2 pb-6 bg-primary text-primary-foreground"
-          style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}>
+        <header
+          className="safe-top px-5 pt-2 pb-6 bg-primary text-primary-foreground"
+          style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}
+        >
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => router.history.back()} className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
+            <button
+              onClick={() => router.history.back()}
+              className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center"
+            >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <Link to="/" className="text-[10px] uppercase tracking-widest opacity-80">EasyBlue</Link>
+            <Link to="/" className="text-[10px] uppercase tracking-widest opacity-80">
+              EasyBlue
+            </Link>
           </div>
           <h1 className="text-2xl font-bold">{titleByRole}</h1>
           <p className="text-sm opacity-80 mt-1">Filter your transactions by date range.</p>
@@ -157,17 +173,22 @@ function HistoryPage() {
               {filtered.length === 0 ? (
                 <div className="text-center py-12 rounded-2xl bg-card border border-border">
                   <FileText className="h-7 w-7 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No transactions found for that range.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No transactions found for that range.
+                  </p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {filtered.map((o) => <TxRow key={o.id} order={o} userType={user?.role} />)}
+                  {filtered.map((o) => (
+                    <TxRow key={o.id} order={o} userType={user?.role} />
+                  ))}
                 </div>
               )}
             </>
           ) : (
             <p className="text-xs text-muted-foreground text-center py-6">
-              Pick a date range above, then tap <span className="font-semibold text-foreground">Proceed</span> to load transactions.
+              Pick a date range above, then tap{" "}
+              <span className="font-semibold text-foreground">Proceed</span> to load transactions.
             </p>
           )}
         </div>
@@ -179,7 +200,9 @@ function HistoryPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">{label}</span>
+      <span className="block text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -192,10 +215,13 @@ function TxRow({ order, userType }: { order: OrderRecord; userType?: string }) {
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const amount = order.priceCents != null ? `$${(order.priceCents / 100).toFixed(2)}` : "—";
   const tone =
-    order.status === "delivered" ? "bg-success/10 text-success" :
-    order.status === "in_transit" ? "bg-primary/10 text-primary" :
-    order.status === "declined" ? "bg-destructive/10 text-destructive" :
-    "bg-cta/10 text-cta";
+    order.status === "delivered"
+      ? "bg-success/10 text-success"
+      : order.status === "in_transit"
+        ? "bg-primary/10 text-primary"
+        : order.status === "declined"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-cta/10 text-cta";
 
   return (
     <>
@@ -208,10 +234,16 @@ function TxRow({ order, userType }: { order: OrderRecord; userType?: string }) {
           <p className="text-[11px] text-muted-foreground">
             {order.id} · {order.type} · {date} {time}
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1 truncate">
+            {order.receiverName} · {order.receiverLocation}
+          </p>
         </div>
+
         <div className="text-right">
           <p className="text-sm font-bold text-foreground">{amount}</p>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{order.status}</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {order.status}
+          </p>
         </div>
         <button
           onClick={() => setOpen(true)}
