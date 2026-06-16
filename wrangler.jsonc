@@ -5,3 +5,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
 }
+{
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
+  }
+}
