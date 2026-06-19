@@ -4,12 +4,12 @@
 
 export interface StockItem {
   id: string;
-  vendorEmail: string;       // owner vendor (approved partner email)
+  vendorEmail: string; // owner vendor (approved partner email)
   vendorName: string;
   productType: string;
   imageDataUrl?: string;
   quantity: number;
-  receivedAt: string;        // ISO date (yyyy-mm-dd)
+  receivedAt: string; // ISO date (yyyy-mm-dd)
   updatedAt: number;
 }
 
@@ -17,8 +17,11 @@ const KEY = "easyblue.stocks";
 
 function read(): StockItem[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(window.localStorage.getItem(KEY) ?? "[]"); }
-  catch { return []; }
+  try {
+    return JSON.parse(window.localStorage.getItem(KEY) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 
 function write(list: StockItem[]) {
@@ -30,7 +33,8 @@ function write(list: StockItem[]) {
 export const stocksStore = {
   list: read,
   byVendor: (email: string) =>
-    read().filter((s) => s.vendorEmail.toLowerCase() === email.toLowerCase())
+    read()
+      .filter((s) => s.vendorEmail.toLowerCase() === email.toLowerCase())
       .sort((a, b) => b.updatedAt - a.updatedAt),
   add(entry: Omit<StockItem, "id" | "updatedAt">) {
     const next: StockItem = {
@@ -42,9 +46,7 @@ export const stocksStore = {
     return next;
   },
   update(id: string, patch: Partial<Omit<StockItem, "id" | "vendorEmail">>) {
-    write(read().map((s) =>
-      s.id === id ? { ...s, ...patch, updatedAt: Date.now() } : s,
-    ));
+    write(read().map((s) => (s.id === id ? { ...s, ...patch, updatedAt: Date.now() } : s)));
   },
   remove(id: string) {
     write(read().filter((s) => s.id !== id));

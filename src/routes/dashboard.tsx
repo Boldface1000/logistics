@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState } from "react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   Home,
   Package,
@@ -14,14 +15,17 @@ import {
   ShieldCheck,
   Bike,
   ArrowRight,
+  Clock,
 } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { SupportChat } from "@/components/SupportChat";
 import { useTheme } from "@/components/ThemeProvider";
-import { auth, type AuthUser } from "@/lib/auth";
-import { ordersStore, type OrderRecord } from "@/lib/orders-store";
+import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
+import { orderQueries } from "@/lib/api-client";
+import { supabase } from "@/integrations/client";
+import type { Order } from "@/types/database.types";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — EasyBlue" }] }),
@@ -29,11 +33,8 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 type Tab = "home" | "orders" | "tracking" | "settings";
-
 type DashboardHomeNav = "/marketplace" | "/park-waybill" | "/standard-booking" | "/stocks";
-
 type AccentVar = "amber" | "cyan" | "emerald" | "zinc";
-
 type StatusKey = "pending" | "accepted" | "in_transit" | "delivered" | "cancelled";
 
 const STATUS_LABEL: Record<StatusKey, string> = {
@@ -44,38 +45,34 @@ const STATUS_LABEL: Record<StatusKey, string> = {
   cancelled: "Cancelled",
 };
 
-function useOrders() {
-  return useSyncExternalStore(
-    (cb) => ordersStore.subscribe(cb),
-    () => JSON.stringify(ordersStore.list()),
-    () => "[]",
-  );
-}
-
-/** Shared dashboard used by both customer and vendor routes. */
 export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" }) {
   const loading = useArtificialLoading(450);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("home");
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  useOrders();
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    const u = auth.current();
-    setUser(u);
-  }, []);
+  // Retrieve shared security and structural details from layout context
+  const context = Route.useRouteContext() as any;
+  const userProfile = context?.auth?.profile;
+  const userId = context?.auth?.userId;
 
-  if (loading)
+  // Sync real-time updates directly into the active terminal session
+  useRealtimeOrders(qc);
+
+  // Stream transit items through custom schema handlers
+  const { data: myOrders = [] } = useSuspenseQuery(orderQueries.mine());
+  const pendingForBadge = myOrders.filter((o: Order) => o.status !== "delivered").length;
+
+  if (loading || !userId) {
     return (
       <MobileShell>
-        <PageLoader label={variant === "vendor" ? "Vendor Dashboard" : "Dashboard"} />
+        <PageLoader label={variant === "vendor" ? "Verifying Credentials" : "Loading Workspace"} />
       </MobileShell>
     );
+  }
 
-  const displayName = user?.firstName ?? (variant === "vendor" ? "Partner" : "Guest");
-  const myOrders = user ? ordersStore.byCustomer(user.email) : [];
-  const pendingForBadge = myOrders.filter((o) => o.status !== "delivered").length;
+  const displayName = userProfile?.first_name ?? (variant === "vendor" ? "Partner Node" : "Guest");
 
   const openTracking = (id: string) => {
     setActiveOrderId(id);
@@ -91,7 +88,7 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
 
   return (
     <MobileShell>
-      <main className="flex-1 overflow-y-auto scrollbar-hide">
+      <main className="flex-1 overflow-y-auto scrollbar-hide bg-background">
         {tab === "home" && (
           <HomeHero name={displayName} variant={variant} onGo={(to) => navigate({ to })} />
         )}
@@ -101,23 +98,24 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
         )}
         {tab === "settings" && (
           <SettingsPanel
-            user={user}
-            onSignOut={() => {
-              auth.signOut();
-              navigate({ to: "/" });
+            user={userProfile}
+            onSignOut={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/login";
             }}
           />
         )}
-        <div style={{ height: "10px" }} />
+        <div className="h-4" />
       </main>
 
       <SupportChat />
 
+      {/* High-End Glassmorphic Bottom Navigation Console */}
       <nav
         className="mt-auto mx-4 mb-2 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
-                   border border-white/30 dark:border-white/10
-                   bg-white/30 dark:bg-white/5 backdrop-blur-2xl
-                   shadow-[0_8px_32px_rgba(25,25,112,0.25)]"
+                   border border-white/20 dark:border-white/5
+                   bg-white/40 dark:bg-black/20 backdrop-blur-2xl
+                   shadow-[0_8px_32px_rgba(25,25,112,0.15)]"
         style={{ marginBottom: `calc(env(safe-area-inset-bottom, 0px) + 6px)` }}
       >
         {navTabs.map((t) => {
@@ -131,7 +129,7 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
               className={`relative h-11 w-11 rounded-full flex items-center justify-center transition active:scale-90 ${
                 active
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                  : "text-foreground/80"
+                  : "text-foreground/80 hover:text-foreground"
               }`}
               type="button"
             >
@@ -159,7 +157,6 @@ function HomeHero({
   const buttons: {
     header: string;
     subheader: string;
-    label: string;
     to: DashboardHomeNav;
     icon: React.ReactNode;
     accentVar: AccentVar;
@@ -167,7 +164,6 @@ function HomeHero({
     {
       header: "Intra-State",
       subheader: "Local Delivery",
-      label: "Intra-State",
       to: "/standard-booking",
       icon: <Bike className="h-5 w-5" />,
       accentVar: "amber",
@@ -175,7 +171,6 @@ function HomeHero({
     {
       header: "Inter-State",
       subheader: "Import/Export",
-      label: "Inter-State",
       to: "/standard-booking",
       icon: <Truck className="h-5 w-5" />,
       accentVar: "zinc",
@@ -183,17 +178,14 @@ function HomeHero({
     {
       header: "Park Waybill",
       subheader: "Inter-park parcel transit",
-      label: "Park Waybill",
       to: "/park-waybill",
       icon: <Truck className="h-5 w-5" />,
       accentVar: "cyan",
     },
     {
-      // 4th bubble requirement
       header: variant === "vendor" ? "Stocks" : "Marketplace",
       subheader: variant === "vendor" ? "Inventory updates" : "Partner pricing",
-      label: variant === "vendor" ? "Stocks" : "Marketplace",
-      to: "/marketplace",
+      to: variant === "vendor" ? "/stocks" : "/marketplace",
       icon: <Package className="h-5 w-5" />,
       accentVar: "emerald",
     },
@@ -201,10 +193,7 @@ function HomeHero({
 
   return (
     <>
-      <section
-        className="safe-top px-5 pt-2 pb-6 bg-primary text-primary-foreground"
-        style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}
-      >
+      <section className="safe-top px-5 pt-2 pb-6 bg-primary text-primary-foreground rounded-b-2xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-white/15 flex items-center justify-center">
@@ -213,7 +202,7 @@ function HomeHero({
             <div>
               <p className="text-[10px] uppercase tracking-widest opacity-70">EasyBlue</p>
               <p className="text-xs font-bold leading-tight">
-                {variant === "vendor" ? "Vendor" : "Customer"}
+                {variant === "vendor" ? "Vendor Node" : "Customer Portal"}
               </p>
             </div>
           </div>
@@ -240,17 +229,16 @@ function HomeHero({
         </div>
 
         <div className="pt-3 text-[11px] text-muted-foreground">
-          Note: Intra-State and Inter-State use the same form.
+          Note: Intra-State and Inter-State use the same form parameters.
         </div>
 
         <div className="pt-5">
-          <h2 className="text-sm font-bold text-foreground mb-2">Tips</h2>
+          <h2 className="text-sm font-bold text-foreground mb-2">Workspace Overview</h2>
           <div className="rounded-2xl bg-card border border-border p-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Pick a service above to start. After you place an order, the records desk will assign
-              a rider and you'll see live updates in{" "}
-              <span className="text-foreground font-semibold">Orders</span> and{" "}
-              <span className="text-foreground font-semibold">Tracking</span>.
+              Pick a service above to configure fulfillment items. After operations commits a
+              dispatch modification, assignable details are instantly piped to your active real-time
+              panels.
             </p>
           </div>
         </div>
@@ -272,83 +260,73 @@ function BubbleButton({
   onClick: () => void;
   accentVar: AccentVar;
 }) {
-  const accentVarToCss =
+  const accentColor =
     accentVar === "amber"
-      ? "var(--color-amber-500)"
+      ? "rgba(245, 158, 11, 0.3)"
       : accentVar === "cyan"
-        ? "var(--color-cyan-500)"
+        ? "rgba(6, 182, 212, 0.3)"
         : accentVar === "zinc"
-          ? "var(--color-zinc-500)"
-          : "var(--color-emerald-500)";
+          ? "rgba(113, 113, 122, 0.3)"
+          : "rgba(16, 185, 129, 0.3)";
 
   return (
     <button
       onClick={onClick}
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom right, color-mix(in oklab, var(--color-amber-500) 20%, transparent), color-mix(in oklab, var(--color-cyan-500) 20%, transparent))",
-      }}
-      className="h-20 relative overflow-hidden flex items-start gap-2 px-3 py-3 rounded-2xl
-                 font-bold text-sm text-[#191970]
-                 border backdrop-blur-xl backdrop-brightness-125
-                 active:scale-95 transition shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+      className="h-20 w-full relative overflow-hidden flex items-start gap-3 p-3 rounded-2xl
+                 font-bold text-sm text-foreground border border-border bg-card
+                 hover:bg-accent/50 active:scale-95 transition"
       type="button"
       aria-label={header}
-      data-accent={accentVarToCss}
     >
-      <span
-        aria-hidden
-        className="absolute inset-0 rounded-2xl"
-        style={{
-          background: "color-mix(in oklab, rgba(255,255,255,0.28) 65%, " + accentVarToCss + " 35%)",
-          border:
-            "1px solid color-mix(in oklab, " + accentVarToCss + " 35%, rgba(255,255,255,0.35) 65%)",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-        }}
+      <div
+        className="absolute inset-0 opacity-10 pointer-events-none transition-opacity"
+        style={{ backgroundColor: accentColor }}
       />
-      <span className="relative z-10 flex items-center justify-center h-9 w-9 rounded-xl">
-        <span className="text-[#191970]">{icon}</span>
-      </span>
-      <span className="relative z-10 flex-1 min-w-0 text-left">
-        <span className="block text-[11px] font-bold opacity-90">{header}</span>
-        <span className="block text-[10px] font-semibold opacity-80 truncate">{subheader}</span>
-      </span>
+      <div className="relative z-10 flex items-center justify-center h-9 w-9 rounded-xl bg-secondary text-primary">
+        {icon}
+      </div>
+      <div className="relative z-10 flex-1 min-w-0 text-left">
+        <span className="block text-[12px] font-bold text-foreground">{header}</span>
+        <span className="block text-[10px] font-medium text-muted-foreground truncate mt-0.5">
+          {subheader}
+        </span>
+      </div>
     </button>
   );
 }
 
-function OrdersPanel({ orders, onView }: { orders: OrderRecord[]; onView: (id: string) => void }) {
-  const active = orders.filter((o) => o.status !== "delivered");
+function OrdersPanel({ orders, onView }: { orders: Order[]; onView: (id: string) => void }) {
+  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
   const completed = orders.filter((o) => o.status === "delivered");
 
   return (
     <div className="safe-top px-5 pt-2">
-      <h2 className="text-xl font-bold text-foreground mb-4">My Orders</h2>
+      <h2 className="text-xl font-bold text-foreground mb-4">My Waybills</h2>
 
       {orders.length === 0 ? (
         <div className="text-center py-12 rounded-2xl bg-card border border-border">
           <Package className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
-            No orders yet — place one from the home screen.
+            No transit records located on this terminal account index.
           </p>
         </div>
       ) : (
-        <>
+        <div className="flex flex-col gap-4">
           {active.length > 0 && (
-            <Section title="In progress" count={active.length} accent="bg-cta">
+            <Section title="In Transit" count={active.length} accent="bg-primary">
               {active.map((o) => (
                 <OrderRow key={o.id} order={o} onView={onView} />
               ))}
             </Section>
           )}
           {completed.length > 0 && (
-            <Section title="Completed" count={completed.length} accent="bg-success">
+            <Section title="Completed" count={completed.length} accent="bg-emerald-500">
               {completed.map((o) => (
                 <OrderRow key={o.id} order={o} onView={onView} />
               ))}
             </Section>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -367,11 +345,11 @@ function Section({
 }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold text-foreground">{title}</h3>
-        <span
-          className={`text-[11px] font-bold px-2 py-1 rounded-full bg-card ${accent} text-primary-foreground`}
-        >
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${accent} text-white`}>
           {count}
         </span>
       </div>
@@ -380,17 +358,20 @@ function Section({
   );
 }
 
-function OrderRow({ order, onView }: { order: OrderRecord; onView: (id: string) => void }) {
+function OrderRow({ order, onView }: { order: Order; onView: (id: string) => void }) {
   return (
     <button
       onClick={() => onView(order.id)}
-      className="w-full text-left p-4 rounded-2xl bg-card border border-border flex items-center justify-between gap-3 active:scale-[0.99]"
+      className="w-full text-left p-4 rounded-2xl bg-card border border-border flex items-center justify-between gap-3 active:scale-[0.99] hover:bg-accent/30 transition"
       type="button"
     >
       <div className="min-w-0">
-        <p className="text-sm font-bold text-foreground truncate">{order.itemDescription}</p>
+        <p className="text-sm font-bold text-foreground truncate">
+          {order.item_description || "Waybill Package"}
+        </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          {order.id} · {STATUS_LABEL[order.status as StatusKey] ?? order.status}
+          ID: {order.id.slice(0, 8).toUpperCase()} •{" "}
+          {STATUS_LABEL[order.status as StatusKey] ?? order.status}
         </p>
       </div>
       <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -403,7 +384,7 @@ function TrackingPanel({
   activeId,
   onPick,
 }: {
-  orders: OrderRecord[];
+  orders: Order[];
   activeId: string | null;
   onPick: (id: string) => void;
 }) {
@@ -415,7 +396,7 @@ function TrackingPanel({
         <h2 className="text-xl font-bold text-foreground mb-4">Live Tracking</h2>
         <div className="text-center py-12 rounded-2xl bg-card border border-border">
           <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">No active orders to track.</p>
+          <p className="text-sm text-muted-foreground">No active nodes to parse tracking maps.</p>
         </div>
       </div>
     );
@@ -425,29 +406,30 @@ function TrackingPanel({
     <div className="safe-top px-5 pt-2">
       <h2 className="text-xl font-bold text-foreground mb-1">Live Tracking</h2>
       <p className="text-xs text-muted-foreground mb-3">
-        {active.id} · {active.itemDescription}
+        {active.id.slice(0, 8).toUpperCase()} · {active.item_description || "Waybill Item"}
       </p>
 
       {orders.length > 1 && (
         <select
           value={active.id}
           onChange={(e) => onPick(e.target.value)}
-          className="mb-3 w-full h-10 px-3 rounded-xl bg-input border border-border text-sm text-foreground"
+          className="mb-3 w-full h-10 px-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {orders.map((o) => (
             <option key={o.id} value={o.id}>
-              {o.id} · {o.itemDescription}
+              {o.id.slice(0, 8).toUpperCase()} · {o.item_description}
             </option>
           ))}
         </select>
       )}
 
-      <div className="relative h-60 rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-secondary to-accent mb-4">
-        <svg className="absolute inset-0 w-full h-full opacity-30">
+      {/* Modern High-End Transit Mapping Engine Visualizer */}
+      <div className="relative h-60 rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-secondary/50 to-background mb-4 shadow-inner">
+        <svg className="absolute inset-0 w-full h-full opacity-20">
           <defs>
-            <pattern id="gd" width="22" height="22" patternUnits="userSpaceOnUse">
+            <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
               <path
-                d="M 22 0 L 0 0 0 22"
+                d="M 20 0 L 0 0 0 20"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="0.5"
@@ -455,7 +437,7 @@ function TrackingPanel({
               />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#gd)" />
+          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
         </svg>
 
         <svg
@@ -464,50 +446,57 @@ function TrackingPanel({
           preserveAspectRatio="none"
         >
           <path
-            d="M 30 210 Q 110 170 150 140 T 250 80 Q 310 55 370 45"
+            d="M 40 200 Q 130 160 180 130 T 280 70 Q 330 50 360 40"
             fill="none"
-            stroke="currentColor"
+            stroke="var(--primary)"
             strokeWidth="3"
             strokeDasharray="6 6"
-            className="text-primary"
           />
         </svg>
 
-        <div className="absolute bottom-6 left-5 flex flex-col items-center">
-          <div className="h-3 w-3 rounded-full bg-muted-foreground" />
-          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-1 shadow truncate max-w-[100px]">
+        <div className="absolute bottom-6 left-6 flex flex-col items-center">
+          <div className="h-3 w-3 rounded-full bg-muted-foreground ring-4 ring-muted-foreground/20" />
+          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-1 shadow-sm">
             Pickup
           </span>
         </div>
 
         {(active.status === "accepted" || active.status === "in_transit") && (
-          <div className="absolute top-20 right-24 flex flex-col items-center animate-pulse">
-            <div className="h-5 w-5 rounded-full bg-cta ring-4 ring-cta/30 flex items-center justify-center">
-              <Navigation className="h-3 w-3 text-cta-foreground" />
+          <div className="absolute top-24 right-32 flex flex-col items-center animate-pulse">
+            <div className="h-5 w-5 rounded-full bg-primary ring-4 ring-primary/30 flex items-center justify-center shadow-md">
+              <Navigation className="h-3 w-3 text-primary-foreground rotate-45" />
             </div>
-            <span className="text-[9px] font-bold text-cta-foreground bg-cta px-1.5 py-0.5 rounded mt-1 shadow">
-              Rider
+            <span className="text-[9px] font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded mt-1 shadow-sm">
+              Courier
             </span>
           </div>
         )}
 
-        <div className="absolute top-5 right-4 flex flex-col items-center">
-          <MapPin className="h-5 w-5 text-primary" />
-          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5 shadow">
+        <div className="absolute top-6 right-6 flex flex-col items-center">
+          <MapPin className="h-5 w-5 text-primary drop-shadow" />
+          <span className="text-[9px] font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5 shadow-sm">
             Drop-off
           </span>
         </div>
 
-        <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground bg-card/80 px-2 py-1 rounded">
+        <div className="absolute bottom-2 left-2 text-[10px] font-bold text-primary-foreground bg-primary px-2 py-0.5 rounded shadow-sm">
           {STATUS_LABEL[active.status as StatusKey] ?? active.status}
         </div>
       </div>
 
-      <div className="rounded-2xl bg-card border border-border p-4 space-y-2 text-xs">
-        <Row label="Pickup" value={active.pickup} />
-        <Row label="Drop-off" value={active.dropoff} />
-        <Row label="Rider" value={active.assignedRiderName ?? "—"} />
-        <Row label="Status" value={STATUS_LABEL[active.status as StatusKey] ?? active.status} />
+      <div className="rounded-2xl bg-card border border-border p-4 space-y-2.5 text-xs">
+        <Row label="Pickup Address" value={active.pickup_address || "Terminal Office Address"} />
+        <Row label="Drop-off Destination" value={active.dropoff_address || "N/A"} />
+        <Row
+          label="Assigned Courier Rider"
+          value={
+            active.assigned_rider_id ? "Courier Allocation Active" : "Awaiting Allocations Desk"
+          }
+        />
+        <Row
+          label="Status Metric"
+          value={STATUS_LABEL[active.status as StatusKey] ?? active.status}
+        />
       </div>
     </div>
   );
@@ -515,64 +504,65 @@ function TrackingPanel({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="text-foreground font-medium text-right">{value}</span>
+      <span className="text-foreground font-semibold text-right max-w-[65%] truncate">{value}</span>
     </div>
   );
 }
 
-function SettingsPanel({ user, onSignOut }: { user: AuthUser | null; onSignOut: () => void }) {
+function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }) {
   const { theme, toggle } = useTheme();
 
   return (
     <div className="safe-top px-5 pt-2">
-      <h2 className="text-xl font-bold text-foreground mb-4">Settings</h2>
+      <h2 className="text-xl font-bold text-foreground mb-4">Settings Workspace</h2>
 
-      <ProfileHeader user={user} />
+      <ProfileHeader
+        user={
+          user ? { firstName: user.first_name, lastName: user.last_name, email: user.email } : null
+        }
+      />
 
-      <button
-        onClick={toggle}
-        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]"
-        type="button"
-      >
-        {theme === "dark" ? (
-          <Sun className="h-5 w-5 text-cta" />
-        ) : (
-          <Moon className="h-5 w-5 text-primary" />
-        )}
-        <span className="text-sm font-semibold text-foreground flex-1 text-left">Dark mode</span>
-        <span className="text-xs text-muted-foreground">{theme === "dark" ? "On" : "Off"}</span>
-      </button>
+      <div className="flex flex-col gap-2 mt-4">
+        <button
+          onClick={toggle}
+          className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 active:scale-[0.99] hover:bg-accent/30 transition"
+          type="button"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-5 w-5 text-amber-500" />
+          ) : (
+            <Moon className="h-5 w-5 text-primary" />
+          )}
+          <span className="text-sm font-semibold text-foreground flex-1 text-left">
+            Dark UI Workspace
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {theme === "dark" ? "Active" : "Disabled"}
+          </span>
+        </button>
 
-      <Link
-        to="/terms"
-        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-2 active:scale-[0.99]"
-      >
-        <ShieldCheck className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold text-foreground flex-1 text-left">Terms of Use</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </Link>
+        <Link
+          to="/terms"
+          className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 active:scale-[0.99] hover:bg-accent/30 transition"
+        >
+          <ShieldCheck className="h-5 w-5 text-primary" />
+          <span className="text-sm font-semibold text-foreground flex-1 text-left">
+            Terms & Protocols
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
 
-      <Link
-        to="/privacy"
-        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-3 active:scale-[0.99]"
-      >
-        <ShieldCheck className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold text-foreground flex-1 text-left">
-          Privacy & Security
-        </span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </Link>
-
-      <button
-        onClick={onSignOut}
-        className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm"
-        type="button"
-      >
-        <LogOut className="h-5 w-5" />
-        Sign out
-      </button>
+        <button
+          onClick={onSignOut}
+          className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-bold text-sm border border-destructive/10 hover:bg-destructive/15 transition mt-2"
+          type="button"
+        >
+          <LogOut className="h-5 w-5" />
+          Terminate Terminal Session
+        </button>
+      </div>
     </div>
   );
 }

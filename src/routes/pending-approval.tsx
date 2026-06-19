@@ -1,6 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Clock, ShieldCheck, Mail, ArrowLeft } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Clock, ShieldCheck, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
+import { PageLoader } from "@/components/PageLoader";
+import { supabase } from "@/integrations/client";
+import { useState } from "react";
+import { toast } from "sonner";
 
 type SearchParams = { role?: "partner" | "rider" };
 
@@ -14,45 +19,127 @@ export const Route = createFileRoute("/pending-approval")({
 
 function PendingApprovalPage() {
   const { role } = Route.useSearch();
+  const navigate = useNavigate();
   const label = role === "rider" ? "Rider" : role === "partner" ? "Partner" : "Account";
+  const [isSignOutPending, setIsSignOutPending] = useState(false);
+
+  // 1. Fetch current active session ID safely
+  const { data: sessionData, isLoading: sessionLoading } = useQuery({
+    queryKey: ["pending-session"],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    },
+  });
+
+  const userId = sessionData?.user?.id;
+
+  // 2. Branch DB logic conditionally based on user role to determine approval state
+  const { data: profileRecord, isLoading: profileLoading } = useQuery({
+    queryKey: ["pending-profile-record", userId, role],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (role === "rider") {
+        const { data, error } = await supabase
+          .from("riders")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from("vendors")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+    },
+  });
+
+  const handleSignOut = async () => {
+    setIsSignOutPending(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Session closed safely");
+      navigate({ to: "/login" });
+    } catch (err) {
+      toast.error("Failed to cleanly disconnect session context");
+    } finally {
+      setIsSignOutPending(false);
+    }
+  };
+
+  if (sessionLoading || profileLoading) {
+    return (
+      <MobileShell>
+        <PageLoader label={`Verifying ${label} Credentials...`} />
+      </MobileShell>
+    );
+  }
+
+  const approvalStatus = profileRecord?.approval ?? "pending";
 
   return (
     <MobileShell>
-      <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border">
-        <Link to="/" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95">
+      <header className="safe-top px-5 pb-3 flex items-center gap-3 border-b border-border">
+        <Link
+          to="/"
+          className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-base font-bold text-foreground">Pending Approval</h1>
-          <p className="text-xs text-muted-foreground">{label} verification</p>
+        <div>
+          <h1 className="text-base font-bold text-foreground">Verification Node</h1>
+          <p className="text-xs text-muted-foreground">{label} Account Status</p>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-5 pb-6 scrollbar-hide flex flex-col items-center text-center pt-10">
-        <div className="relative">
-          <div className="h-24 w-24 rounded-full bg-cta/10 text-cta flex items-center justify-center mb-6 shadow-lg shadow-cta/20">
-            <Clock className="h-12 w-12" />
+      <main className="flex-1 overflow-y-auto px-5 pt-6 pb-6 flex flex-col justify-between">
+        <div className="space-y-6">
+          <div className="p-5 rounded-2xl bg-card border border-border text-center space-y-3">
+            <div className="h-14 w-14 rounded-2xl bg-cta/10 text-cta mx-auto flex items-center justify-center animate-pulse">
+              <Clock className="h-7 w-7" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-foreground">Screening in Progress</h2>
+              <p className="text-xs text-muted-foreground leading-relaxed px-2">
+                Your {label.toLowerCase()} application is undergoing administrative policy audits.
+                Operations will establish authorization parameters shortly.
+              </p>
+            </div>
           </div>
-          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-cta animate-pulse ring-4 ring-background" />
+
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+              Onboarding Checklist
+            </h3>
+            <StatusRow
+              icon={<Mail className="h-4 w-4" />}
+              label="Digital Identity Index Created"
+              done={true}
+            />
+            <StatusRow
+              icon={<ShieldCheck className="h-4 w-4" />}
+              label="Operations Clearance Review"
+              done={approvalStatus === "approved"}
+              active={approvalStatus === "pending"}
+            />
+          </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-foreground">Application received</h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-xs leading-relaxed">
-          Your {label.toLowerCase()} account is now under review by our compliance team. You'll get an email once it's approved — typically within 24 hours.
-        </p>
-
-        <div className="w-full mt-8 flex flex-col gap-2.5">
-          <StatusRow icon={<ShieldCheck className="h-4 w-4" />} label="Identity submitted" done />
-          <StatusRow icon={<Clock className="h-4 w-4" />} label="Compliance review" active />
-          <StatusRow icon={<Mail className="h-4 w-4" />} label="Email confirmation" />
-        </div>
-
-        <div className="w-full mt-8 p-4 rounded-2xl bg-secondary/60 border border-border text-left">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-1">What's next?</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Keep an eye on <span className="text-foreground font-medium">your inbox</span>. Once approved, you can sign in and access your {label.toLowerCase()} dashboard.
-          </p>
-        </div>
+        <button
+          onClick={handleSignOut}
+          disabled={isSignOutPending}
+          className="w-full mt-6 p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center gap-3 active:scale-[0.99] font-semibold text-sm border border-destructive/10 disabled:opacity-50"
+        >
+          <LogOut className="h-5 w-5" />
+          {isSignOutPending ? "Disconnecting..." : "Sign Out from Session"}
+        </button>
       </main>
 
       <footer className="safe-bottom px-5 pt-3 border-t border-border bg-card">
@@ -67,21 +154,34 @@ function PendingApprovalPage() {
   );
 }
 
-function StatusRow({ icon, label, done, active }: { icon: React.ReactNode; label: string; done?: boolean; active?: boolean }) {
+function StatusRow({
+  icon,
+  label,
+  done,
+  active,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  done?: boolean;
+  active?: boolean;
+}) {
   return (
     <div
       className={`flex items-center gap-3 p-3 rounded-xl border ${
         done
-          ? "bg-success/10 border-success/30 text-success"
+          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
           : active
             ? "bg-cta/10 border-cta/30 text-cta"
             : "bg-card border-border text-muted-foreground"
       }`}
     >
-      <div className="h-8 w-8 rounded-lg bg-card/60 flex items-center justify-center">{icon}</div>
-      <p className="text-sm font-semibold flex-1 text-left">{label}</p>
-      {done && <span className="text-[10px] font-bold">DONE</span>}
-      {active && <span className="text-[10px] font-bold animate-pulse">REVIEWING</span>}
+      <div className="h-8 w-8 rounded-lg bg-card/60 flex items-center justify-center border border-border/40">
+        {icon}
+      </div>
+      <span className="text-xs font-semibold flex-1">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-card/80 border border-border/40">
+        {done ? "Done" : active ? "Active" : "Wait"}
+      </span>
     </div>
   );
 }

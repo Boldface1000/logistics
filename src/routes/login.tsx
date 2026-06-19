@@ -1,15 +1,35 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
-import { auth } from "@/lib/auth";
+import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign In — EasyBlue" }] }),
   beforeLoad: async () => {
-    throw redirect({ to: "/auth" });
+    // Safely check session context before rendering route
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // If the user is already authenticated, bypass login and move them forward
+    if (session) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) {
+        if (profile.role === "admin") throw redirect({ to: "/admin" });
+        if (profile.role === "vendor") throw redirect({ to: "/vendor-dashboard" });
+        if (profile.role === "rider") throw redirect({ to: "/rider-dashboard" });
+        throw redirect({ to: "/dashboard" });
+      }
+    }
   },
+  component: LoginPage,
 });
 
 function LoginPage() {
@@ -18,23 +38,85 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = auth.signIn(email, password);
-    if (!user) {
-      toast.error("Invalid credentials", {
-        description: "Check your email and password and try again.",
+    if (!email.trim() || !password.trim()) {
+      toast.error("Missing credentials", {
+        description: "Please populate your email and password fields.",
       });
       return;
     }
-    toast.success(`Welcome back, ${user.firstName}`);
-    navigate({ to: auth.homeFor(user) });
+
+    try {
+      setLoading(true);
+
+      // Sign in via production Supabase engine
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+        options: {
+          persistSession: remember,
+        },
+      });
+
+      if (authError) throw authError;
+      if (!user) throw new Error("Authentication failed. No user found.");
+
+      // Fetch verified user platform roles matching schema triggers
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("first_name, role, approval")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Handle account approval flows
+      if (profile.approval === "pending") {
+        toast.warning("Account Pending Approval", {
+          description: "Your access is currently under validation by system administrators.",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (profile.approval === "rejected") {
+        toast.error("Access Denied", {
+          description: "Your registration request has been rejected.",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      toast.success(`Welcome back, ${profile.first_name || "User"}`);
+
+      // Routing distribution matrix
+      if (profile.role === "admin") {
+        navigate({ to: "/admin" });
+      } else if (profile.role === "vendor") {
+        navigate({ to: "/vendor-dashboard" });
+      } else if (profile.role === "rider") {
+        navigate({ to: "/rider-dashboard" });
+      } else {
+        navigate({ to: "/dashboard" });
+      }
+    } catch (err) {
+      toast.error("Invalid credentials", {
+        description: err instanceof Error ? err.message : "Check your details and try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <MobileShell>
-      <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border">
+      <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border bg-background">
         <Link
           to="/"
           className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
@@ -47,7 +129,7 @@ function LoginPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-5 pb-6 pt-6 scrollbar-hide">
+      <main className="flex-1 overflow-y-auto px-5 pb-6 pt-6 scrollbar-hide bg-background">
         <h2 className="text-2xl font-bold text-foreground mb-1">Hello again</h2>
         <p className="text-sm text-muted-foreground mb-6">Sign in with your registered email.</p>
 
@@ -58,11 +140,12 @@ function LoginPage() {
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="email"
+                disabled={loading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@email.com"
                 autoComplete="email"
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
               />
             </div>
           </div>
@@ -73,11 +156,12 @@ function LoginPage() {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type={showPwd ? "text" : "password"}
+                disabled={loading}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
                 autoComplete="current-password"
-                className="w-full h-12 pl-11 pr-12 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-12 pl-11 pr-12 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
               />
               <button
                 type="button"
@@ -100,16 +184,21 @@ function LoginPage() {
               />
               <span className="text-sm text-foreground">Remember me</span>
             </label>
-            <button type="button" className="text-sm font-semibold text-primary">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/forgot-password" })}
+              className="text-sm font-semibold text-primary"
+            >
               Forgot?
             </button>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition shadow-lg shadow-primary/20"
+            disabled={loading}
+            className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-primary/20 disabled:opacity-50"
           >
-            Sign In
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
           </button>
 
           <p className="text-xs text-muted-foreground text-center leading-relaxed mt-1">

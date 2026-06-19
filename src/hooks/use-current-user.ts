@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole =
-  | "customer"
-  | "vendor"
-  | "rider"
-  | "super_admin"
-  | "logistics_admin";
+export type AppRole = "customer" | "vendor" | "rider" | "super_admin" | "logistics_admin";
 
 export interface CurrentUser {
   user: User;
@@ -30,9 +25,7 @@ export interface CurrentUser {
  */
 export function useCurrentUser() {
   const [state, setState] = useState<
-    | { status: "loading" }
-    | { status: "anonymous" }
-    | { status: "ready"; data: CurrentUser }
+    { status: "loading" } | { status: "anonymous" } | { status: "ready"; data: CurrentUser }
   >({ status: "loading" });
 
   useEffect(() => {

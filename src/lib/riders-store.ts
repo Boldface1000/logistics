@@ -8,14 +8,15 @@ export interface RiderEntry {
 }
 
 const SEED: RiderEntry[] = [
-  { id: "rider-chi",    name: "Chi Rider",   email: "chi@easyblue.test" },
-  { id: "rider-marcus", name: "Marcus Lee",  email: "marcus@easyblue.test" },
-  { id: "rider-ada",    name: "Ada Nwosu",   email: "ada.rider@easyblue.test" },
+  { id: "rider-chi", name: "Chi Rider", email: "chi@easyblue.test" },
+  { id: "rider-marcus", name: "Marcus Lee", email: "marcus@easyblue.test" },
+  { id: "rider-ada", name: "Ada Nwosu", email: "ada.rider@easyblue.test" },
 ];
 
 export const ridersStore = {
   approved(): RiderEntry[] {
-    const approvedSignups = pendingStore.list()
+    const approvedSignups = pendingStore
+      .list()
       .filter((p) => p.role === "rider" && p.status === "approved")
       .map<RiderEntry>((p) => ({
         id: p.id,

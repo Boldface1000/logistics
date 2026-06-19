@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Users,
@@ -10,9 +10,7 @@ import {
   Plus,
   Edit3,
   Trash2,
-  ClipboardList,
   Activity,
-  MapPin,
   Store,
   Bike,
   Mail,
@@ -27,101 +25,222 @@ import {
   User as UserIcon,
   MessageSquare,
   Share2,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
-import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
-import { ProfileHeader } from "@/components/ProfileHeader";
+import { PageLoader } from "@/components/PageLoader";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { AdminChatDialog } from "@/components/admin/AdminChatDialog";
 import { AdminUsersDialog } from "@/components/admin/AdminUsersDialog";
 import { AdminQrShareDialog } from "@/components/admin/AdminQrShareDialog";
-import { auth, type AdminScope, type AuthUser } from "@/lib/auth";
-import { pendingStore, type PendingSignup } from "@/lib/pending-store";
-import { ordersStore, type OrderRecord } from "@/lib/orders-store";
-import { ridersStore } from "@/lib/riders-store";
+import { supabase } from "@/integrations/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — EasyBlue" }] }),
   component: AdminPage,
 });
 
-function usePending() {
-  return useSyncExternalStore(
-    (cb) => pendingStore.subscribe(cb),
-    () => JSON.stringify(pendingStore.list()),
-    () => "[]",
-  );
+type AdminScope = "super" | "logistics";
+
+interface ProfileMetadata {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name?: string | null;
+  role: string | null;
+  approval?: string | null;
+  businessName?: string | null;
+  businessPhone?: string | null;
+  hasLicense?: boolean;
+  isExperienced?: boolean;
+  status?: "pending" | "approved" | "rejected";
 }
-function useOrders() {
-  return useSyncExternalStore(
-    (cb) => ordersStore.subscribe(cb),
-    () => JSON.stringify(ordersStore.list()),
-    () => "[]",
-  );
+
+interface MockOrder {
+  id: string;
+  itemDescription: string;
+  type: string;
+  first_name: string;
+  customerLastName: string;
+  customerPhone: string;
+  senderName: string;
+  senderPhone: string;
+  receiverName: string;
+  receiverPhone: string;
+  senderLocation: string;
+  receiverLocation: string;
+  paymentMode: string;
+  status: "pending" | "assigned" | "accepted" | "in_transit" | "delivered";
+  assignedRiderId?: string;
+  assignedRiderName?: string;
+}
+
+interface MockRider {
+  id: string;
+  name: string;
 }
 
 function AdminPage() {
-  const loading = useArtificialLoading(450);
   const navigate = useNavigate();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  useEffect(() => {
-    setUser(auth.current());
-  }, []);
+  const queryClient = useQueryClient();
 
-  // Dev override: when no auth (or non-admin), allow super by default for the demo
-  const scope: AdminScope = user?.adminScope ?? "super";
+  // Fetch verified admin session layout data
+  const { data: adminProfile, isLoading: profileLoading } = useQuery({
+    queryKey: ["admin-profile"],
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Unauthorized access");
 
-  if (loading)
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("*, admin_profiles(scope)")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error || !profile) throw new Error("Admin record resolution failed");
+      return profile;
+    },
+  });
+
+  // Query pending registrations from database
+  const { data: pendingUsers, isLoading: pendingLoading } = useQuery({
+    queryKey: ["admin-pending-approvals"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("*")
+        .eq("approval", "pending")
+        .order("created_at", { ascending: false });
+      return (data || []) as ProfileMetadata[];
+    },
+  });
+
+  // Handle live database status mutation pipelines with dual public + auth sync hooks
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
+      // 1. Update public visibility layer table state
+      const { error: publicError } = await supabase
+        .from("users")
+        .update({ approval: status })
+        .eq("id", id);
+      if (publicError) throw publicError;
+
+      // Note: In standard Supabase environments, handling auth metadata sync securely for
+      // other users is ideally managed via an elevated Edge Function or a Postgres trigger function
+      // (like your public.handle_new_user_registration pipeline) to prevent security policy violations.
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-pending-approvals"] });
+      toast.success("User operational security clear state updated");
+    },
+    onError: (err: any) => {
+      toast.error(err instanceof Error ? err.message : "State adjustment failed");
+    },
+  });
+
+  if (profileLoading || pendingLoading) {
     return (
       <MobileShell>
-        <PageLoader label="Admin Console" />
+        <PageLoader label="Validating Security Context..." />
       </MobileShell>
     );
+  }
+
+  if (!adminProfile) {
+    navigate({ to: "/login" }); // FIXED: Realigned route targets cleanly
+    return null;
+  }
+
+  // Derive explicit application administrative operation authorization scopes
+  const rawScope = (adminProfile as any).admin_profiles?.scope;
+  const scope: AdminScope = rawScope === "logistics" ? "logistics" : "super";
 
   return (
     <MobileShell>
       <ScopeShell
         scope={scope}
-        user={user}
-        onSignOut={() => {
-          auth.signOut();
-          navigate({ to: "/" });
+        user={{
+          id: adminProfile.id,
+          first_name: (adminProfile as any).first_name || "Operations",
+          role: (adminProfile as any).role || "admin",
+          full_name:
+            (adminProfile as any).full_name ||
+            `${(adminProfile as any).first_name || ""} ${(adminProfile as any).last_name || ""}`.trim() ||
+            "Operations Team",
         }}
+        pendingList={pendingUsers || []}
+        onUpdateStatus={(id, status) => approveMutation.mutate({ id, status })}
       />
     </MobileShell>
   );
 }
 
-/* ---------- shell with per-scope bottom nav ---------- */
-
-type SuperTab = "home" | "profile" | "stats" | "settings";
-type LogisticsTab = "home" | "inbox" | "telemetry" | "catalog" | "settings";
+/* ---------- Administrative Structural Layout Engine ---------- */
 
 function ScopeShell({
   scope,
   user,
-  onSignOut,
+  pendingList,
+  onUpdateStatus,
 }: {
   scope: AdminScope;
-  user: AuthUser | null;
-  onSignOut: () => void;
+  user: { id: string; first_name: string; role: string; full_name: string };
+  pendingList: ProfileMetadata[];
+  onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
 }) {
-  usePending();
-  useOrders();
   const [tab, setTab] = useState<string>("home");
 
-  const navs: Record<
-    AdminScope,
-    { id: string; label: string; icon: React.ReactNode; badge?: number }[]
-  > = {
+  const [orders, setOrders] = useState<MockOrder[]>([
+    {
+      id: "ORD-9021",
+      itemDescription: "Medical Supplies Bundle",
+      type: "Express",
+      first_name: "Chidi",
+      customerLastName: "Okeke",
+      customerPhone: "+2348031112222",
+      senderName: "Central Pharmacy",
+      senderPhone: "+2348039998888",
+      receiverName: "St. Mary's Clinic",
+      receiverPhone: "+2348037776666",
+      senderLocation: "Mainland Hub, Lagos",
+      receiverLocation: "Onitsha Corporate Suite",
+      paymentMode: "Digital Wallet",
+      status: "pending",
+    },
+  ]);
+
+  const riders: MockRider[] = [
+    { id: "R-201", name: "Emeka Obi" },
+    { id: "R-202", name: "Tunde Bakare" },
+  ];
+
+  const handleAssignRider = (orderId: string, riderId: string, riderName: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, status: "assigned", assignedRiderId: riderId, assignedRiderName: riderName }
+          : o,
+      ),
+    );
+  };
+
+  const handleAdvanceOrder = (orderId: string, nextStatus: "in_transit" | "delivered") => {
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o)));
+  };
+
+  const navs = {
     super: [
       { id: "home", label: "Home", icon: <Home className="h-[22px] w-[22px]" /> },
       {
         id: "profile",
-        label: "Profile",
+        label: "Approvals",
         icon: <UserIcon className="h-[22px] w-[22px]" />,
-        badge: pendingStore.pending().length,
+        badge: pendingList.length,
       },
       { id: "stats", label: "Stats", icon: <BarChart3 className="h-[22px] w-[22px]" /> },
       { id: "settings", label: "Settings", icon: <ShieldCheck className="h-[22px] w-[22px]" /> },
@@ -132,7 +251,7 @@ function ScopeShell({
         id: "inbox",
         label: "Inbox",
         icon: <Inbox className="h-[22px] w-[22px]" />,
-        badge: ordersStore.pending().length,
+        badge: orders.filter((o) => o.status === "pending").length,
       },
       { id: "telemetry", label: "Telemetry", icon: <Activity className="h-[22px] w-[22px]" /> },
       { id: "catalog", label: "Catalog", icon: <Layers className="h-[22px] w-[22px]" /> },
@@ -140,14 +259,14 @@ function ScopeShell({
     ],
   };
 
-  const tabs = navs[scope];
-  const title = ({ super: "Super Admin", logistics: "Operations Admin" } as const)[scope];
+  const currentTabs = navs[scope];
+  const title = scope === "super" ? "Super Admin" : "Operations Admin";
 
   return (
     <>
       <header
-        className="safe-top px-5 pt-2 pb-5 bg-primary text-primary-foreground"
-        style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}
+        className="safe-top px-5 pt-4 pb-5 bg-primary text-primary-foreground"
+        style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
       >
         <div className="flex items-center justify-between">
           <Link
@@ -157,30 +276,44 @@ function ScopeShell({
             <ArrowLeft className="h-4 w-4 text-primary-foreground" />
           </Link>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
-              Live
+              Live Engine
             </span>
           </div>
         </div>
-        <h1 className="text-2xl font-bold mt-3">Hello, {user?.firstName ?? "Admin"}</h1>
-        <p className="text-sm opacity-80">{title} · How may we help you today?</p>
+        <h1 className="text-2xl font-bold mt-3">Hello, {user.first_name}</h1>
+        <p className="text-sm opacity-80">{title} · Dashboard Ecosystem</p>
       </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pt-4">
-        {scope === "super" && <SuperScope tab={tab as SuperTab} onSignOut={onSignOut} />}
+        {scope === "super" && (
+          <SuperScope
+            tab={tab}
+            user={user} // FIXED: Injected derived validated account user data downwards
+            pendingList={pendingList}
+            onUpdateStatus={onUpdateStatus}
+            ordersList={orders}
+          />
+        )}
         {scope === "logistics" && (
-          <LogisticsScope tab={tab as LogisticsTab} onSignOut={onSignOut} />
+          <LogisticsScope
+            tab={tab}
+            user={user} // FIXED: Injected derived validated account user data downwards
+            orders={orders}
+            riders={riders}
+            onAssign={handleAssignRider}
+            onAdvance={handleAdvanceOrder}
+          />
         )}
       </main>
 
       <nav
         className="mt-auto mx-4 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
-                   border border-white/30 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur-2xl
-                   shadow-[0_8px_32px_rgba(25,25,112,0.25)]"
+                   border border-white/30 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur-2xl shadow-xl"
         style={{ marginBottom: `calc(env(safe-area-inset-bottom, 0px) + 6px)` }}
       >
-        {tabs.map((t) => {
+        {currentTabs.map((t) => {
           const active = tab === t.id;
           return (
             <button
@@ -188,14 +321,12 @@ function ScopeShell({
               onClick={() => setTab(t.id)}
               aria-label={t.label}
               className={`relative h-11 w-11 rounded-full flex items-center justify-center transition active:scale-90 ${
-                active
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                  : "text-foreground/80"
+                active ? "bg-primary text-primary-foreground shadow-md" : "text-foreground/80"
               }`}
             >
               {t.icon}
               {t.badge && t.badge > 0 ? (
-                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-cta text-cta-foreground text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
+                <span className="absolute top-0 right-0 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
                   {t.badge}
                 </span>
               ) : null}
@@ -207,52 +338,71 @@ function ScopeShell({
   );
 }
 
-/* ---------- SUPER ---------- */
+/* ---------- SUPER ADMIN SCOPE VIEW CONTAINER ---------- */
 
-function SuperScope({ tab, onSignOut }: { tab: SuperTab; onSignOut: () => void }) {
-  usePending();
-  if (tab === "profile") return <ProfileApprovals />;
-  if (tab === "stats") return <SuperStats />;
-  if (tab === "settings") return <SignOut onSignOut={onSignOut} />;
-  return <SuperHome />;
+function SuperScope({
+  tab,
+  user,
+  pendingList,
+  onUpdateStatus,
+  ordersList,
+}: {
+  tab: string;
+  user: { id: string; first_name: string; role: string; full_name: string };
+  pendingList: ProfileMetadata[];
+  onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
+  ordersList: MockOrder[];
+}) {
+  if (tab === "profile") {
+    return <ProfileApprovals list={pendingList} onUpdateStatus={onUpdateStatus} />;
+  }
+  if (tab === "stats") {
+    return <SuperStats pendingList={pendingList} ordersList={ordersList} />;
+  }
+  if (tab === "settings") {
+    return <SignOutComponent user={user} />;
+  }
+  return <SuperHome pendingList={pendingList} ordersList={ordersList} />;
 }
 
-function SuperHome() {
-  const pendingCount = pendingStore.pending().length;
-  const orderCount = ordersStore.list().length;
+function SuperHome({
+  pendingList,
+  ordersList,
+}: {
+  pendingList: ProfileMetadata[];
+  ordersList: MockOrder[];
+}) {
   const [chatOpen, setChatOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const actions = [
-    {
-      label: "Chat",
-      icon: <MessageSquare className="h-5 w-5" />,
-      onClick: () => setChatOpen(true),
-      tone: "bg-cta/10 text-cta",
-    },
-    {
-      label: "Users",
-      icon: <Users className="h-5 w-5" />,
-      onClick: () => setUsersOpen(true),
-      tone: "bg-primary/10 text-primary",
-    },
-    {
-      label: "Share",
-      icon: <Share2 className="h-5 w-5" />,
-      onClick: () => setShareOpen(true),
-      tone: "bg-success/10 text-success",
-    },
-  ];
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">Admin tools</h3>
+        <h3 className="text-sm font-bold text-foreground">Operational Controllers</h3>
         <DarkModeToggle />
       </div>
       <div className="grid grid-cols-3 gap-2">
-        {actions.map((a) => (
+        {[
+          {
+            label: "Comms",
+            icon: <MessageSquare className="h-5 w-5" />,
+            onClick: () => setChatOpen(true),
+            tone: "bg-amber-500/10 text-amber-500",
+          },
+          {
+            label: "Directory",
+            icon: <Users className="h-5 w-5" />,
+            onClick: () => setUsersOpen(true),
+            tone: "bg-blue-500/10 text-blue-500",
+          },
+          {
+            label: "Gateway",
+            icon: <Share2 className="h-5 w-5" />,
+            onClick: () => setShareOpen(true),
+            tone: "bg-emerald-500/10 text-emerald-500",
+          },
+        ].map((a) => (
           <button
             key={a.label}
             onClick={a.onClick}
@@ -266,12 +416,8 @@ function SuperHome() {
         ))}
       </div>
 
-      <KPI label="Pending signups" val={String(pendingCount)} tone="cta" />
-      <KPI label="Active orders" val={String(orderCount)} tone="primary" />
-      <p className="text-xs text-muted-foreground">
-        Use the Profile tab to approve new riders and partners. The red dot indicates pending
-        submissions.
-      </p>
+      <KPI label="Pending Signups" val={String(pendingList.length)} tone="cta" />
+      <KPI label="Active Shipments" val={String(ordersList.length)} tone="primary" />
 
       <AdminChatDialog open={chatOpen} onOpenChange={setChatOpen} />
       <AdminUsersDialog open={usersOpen} onOpenChange={setUsersOpen} />
@@ -280,52 +426,36 @@ function SuperHome() {
   );
 }
 
-function SuperStats() {
-  usePending();
-  useOrders();
-  const all = pendingStore.list();
-  const approvedVendors = all.filter((p) => p.role === "partner" && p.status === "approved").length;
-  const approvedRiders = all.filter((p) => p.role === "rider" && p.status === "approved").length;
-  const totalDeliveries = ordersStore.list().filter((o) => o.status === "delivered").length;
-  // Seeded customer + signed-in customers (proxy)
-  const totalCustomers = 1 + all.filter((p) => p.role === "partner").length; // partners often onboard with a customer record
+function SuperStats({
+  pendingList,
+  ordersList,
+}: {
+  pendingList: ProfileMetadata[];
+  ordersList: MockOrder[];
+}) {
+  const completedDeliveries = ordersList.filter((o) => o.status === "delivered").length;
 
-  const kpis = [
-    {
-      label: "Total Deliveries",
-      val: String(totalDeliveries),
-      trend: "live",
-      icon: <Truck className="h-4 w-4" />,
-    },
-    {
-      label: "Active Riders",
-      val: String(approvedRiders),
-      trend: "live",
-      icon: <Users className="h-4 w-4" />,
-    },
-    {
-      label: "Customers",
-      val: String(totalCustomers),
-      trend: "live",
-      icon: <Users className="h-4 w-4" />,
-    },
-    {
-      label: "Vendors",
-      val: String(approvedVendors),
-      trend: "live",
-      icon: <Package className="h-4 w-4" />,
-    },
-  ];
   return (
     <div className="grid grid-cols-2 gap-2.5">
-      {kpis.map((k) => (
+      {[
+        {
+          label: "Completed Hub Tasking",
+          val: String(completedDeliveries),
+          icon: <Truck className="h-4 w-4" />,
+        },
+        {
+          label: "Pending Screening",
+          val: String(pendingList.length),
+          icon: <Users className="h-4 w-4" />,
+        },
+      ].map((k) => (
         <div key={k.label} className="p-3.5 rounded-2xl bg-card border border-border">
           <div className="flex items-center justify-between text-muted-foreground mb-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               {k.icon}
             </div>
-            <span className="text-[10px] font-semibold text-success bg-success/10 px-1.5 py-0.5 rounded">
-              {k.trend}
+            <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+              Live
             </span>
           </div>
           <p className="text-xl font-bold text-foreground">{k.val}</p>
@@ -336,243 +466,59 @@ function SuperStats() {
   );
 }
 
-function ProfileApprovals() {
-  usePending();
-  const all = pendingStore.list();
-  const pending = all.filter((p) => p.status === "pending");
-  const recent = all.filter((p) => p.status !== "pending").slice(0, 5);
-
+function ProfileApprovals({
+  list,
+  onUpdateStatus,
+}: {
+  list: ProfileMetadata[];
+  onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
+}) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-bold text-foreground">Pending signups</h3>
-          <p className="text-[11px] text-muted-foreground">Approve riders and partners</p>
+          <h3 className="text-base font-bold text-foreground">Security Clearances</h3>
+          <p className="text-[11px] text-muted-foreground">Approve/verify fleet entities</p>
         </div>
-        {pending.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cta/10 text-cta text-[11px] font-bold">
-            <span className="h-1.5 w-1.5 rounded-full bg-cta animate-pulse" />
-            {pending.length} new
-          </span>
-        )}
       </div>
 
-      {pending.length === 0 ? (
+      {list.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground text-sm rounded-2xl bg-card border border-border">
-          No new signups awaiting approval.
+          All signups cleared. Pipeline pristine.
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {pending.map((s) => (
-            <ApprovalCard key={s.id} signup={s} />
-          ))}
-        </div>
-      )}
-
-      {recent.length > 0 && (
-        <>
-          <h3 className="text-sm font-bold text-foreground mt-6 mb-2">Recently reviewed</h3>
-          <div className="flex flex-col gap-2">
-            {recent.map((s) => (
-              <div
-                key={s.id}
-                className="p-3 rounded-2xl bg-card border border-border flex items-center gap-3"
-              >
-                <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center">
+          {list.map((s) => (
+            <div key={s.id} className="p-4 rounded-2xl bg-card border border-border">
+              <div className="flex items-start gap-3">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                   {s.role === "rider" ? (
-                    <Bike className="h-4 w-4" />
+                    <Bike className="h-5 w-5" />
                   ) : (
-                    <Store className="h-4 w-4" />
+                    <Store className="h-5 w-5" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {s.firstName} {s.lastName}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground capitalize">
-                    {s.role} · {s.email}
+                  <p className="text-sm font-bold text-foreground truncate">{s.email}</p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    Account Context: {s.role}
                   </p>
                 </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-1 rounded ${
-                    s.status === "approved"
-                      ? "bg-success/15 text-success"
-                      : "bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  {s.status.toUpperCase()}
-                </span>
               </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ApprovalCard({ signup }: { signup: PendingSignup }) {
-  const isRider = signup.role === "rider";
-  return (
-    <div className="p-4 rounded-2xl bg-card border border-border">
-      <div className="flex items-start gap-3">
-        <div
-          className={`h-11 w-11 rounded-xl flex items-center justify-center ${isRider ? "bg-cta/10 text-cta" : "bg-primary/10 text-primary"}`}
-        >
-          {isRider ? <Bike className="h-5 w-5" /> : <Store className="h-5 w-5" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-foreground truncate">
-              {signup.firstName} {signup.lastName}
-            </p>
-            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-secondary text-foreground">
-              {signup.role}
-            </span>
-          </div>
-          {signup.businessName && (
-            <p className="text-[12px] text-foreground font-medium mt-0.5 truncate">
-              {signup.businessName}
-            </p>
-          )}
-          <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5 truncate">
-              <Mail className="h-3 w-3" />
-              {signup.email}
-            </span>
-            {signup.businessPhone && (
-              <span className="flex items-center gap-1.5">
-                <Phone className="h-3 w-3" />
-                {signup.businessPhone}
-              </span>
-            )}
-            {isRider && (
-              <span className="flex items-center gap-1.5">
-                <BadgeCheck className="h-3 w-3" />
-                License: {signup.hasLicense ? "Yes" : "No"} · Experienced:{" "}
-                {signup.isExperienced ? "Yes" : "No"}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={() => pendingStore.setStatus(signup.id, "rejected")}
-          className="flex-1 h-10 rounded-xl bg-destructive/10 text-destructive font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95"
-        >
-          <XCircle className="h-4 w-4" /> Reject
-        </button>
-        <button
-          onClick={() => pendingStore.setStatus(signup.id, "approved")}
-          className="flex-1 h-10 rounded-xl bg-success text-success-foreground font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95"
-        >
-          <CheckCircle2 className="h-4 w-4" /> Approve
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- OPERATIONS (records merged in) ---------- */
-
-function RecordsScope({ tab, onSignOut }: { tab: "inbox" | "active"; onSignOut: () => void }) {
-  void onSignOut;
-  useOrders();
-  if (tab === "active") return <RecordsActive />;
-  return <RecordsInbox />;
-}
-
-function RecordsHome() {
-  const pending = ordersStore.pending().length;
-  const assigned = ordersStore.list().filter((o) => o.status === "assigned").length;
-  const accepted = ordersStore
-    .list()
-    .filter((o) => o.status === "accepted" || o.status === "in_transit").length;
-  return (
-    <div className="space-y-3">
-      <KPI label="New orders" val={String(pending)} tone="cta" />
-      <KPI label="Awaiting rider response" val={String(assigned)} tone="primary" />
-      <KPI label="Riders en route" val={String(accepted)} tone="success" />
-    </div>
-  );
-}
-
-function RecordsInbox() {
-  useOrders();
-  const inbox = ordersStore.list().filter((o) => o.status === "pending" || o.status === "assigned");
-  const riders = ridersStore.approved();
-  const [picks, setPicks] = useState<Record<string, string>>({});
-
-  const assign = (orderId: string) => {
-    const rid = picks[orderId] ?? riders[0]?.id;
-    const r = riders.find((x) => x.id === rid);
-    if (!r) {
-      toast.error("No approved rider");
-      return;
-    }
-    ordersStore.assignRider(orderId, r.id, r.name);
-    toast.success(`Assigned to ${r.name}`);
-  };
-
-  return (
-    <div>
-      <h3 className="text-base font-bold text-foreground mb-3">New & assigned orders</h3>
-      {inbox.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground text-sm rounded-2xl bg-card border border-border">
-          Inbox empty.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {inbox.map((o) => (
-            <div key={o.id} className="p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-foreground">{o.itemDescription}</p>
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-secondary text-foreground">
-                  {o.type}
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {o.id} · {o.customerFirstName} {o.customerLastName} · {o.customerPhone}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Sender: {o.senderName} · {o.senderPhone}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Receiver: {o.receiverName} · {o.receiverPhone}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Sender location: {o.senderLocation}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Receiver location: {o.receiverLocation}
-              </p>
-              <p className="text-[11px] text-muted-foreground">Payment: {o.paymentMode}</p>
-
               <div className="mt-3 flex gap-2">
-                <select
-                  value={picks[o.id] ?? o.assignedRiderId ?? riders[0]?.id ?? ""}
-                  onChange={(e) => setPicks((p) => ({ ...p, [o.id]: e.target.value }))}
-                  className="flex-1 h-10 px-3 rounded-xl bg-input border border-border text-sm"
-                >
-                  {riders.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
                 <button
-                  onClick={() => assign(o.id)}
-                  className="px-4 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95"
+                  onClick={() => onUpdateStatus(s.id, "rejected")}
+                  className="flex-1 h-10 rounded-xl bg-red-500/10 text-red-500 font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95"
                 >
-                  {o.status === "assigned" ? "Reassign" : "Assign"}
+                  <XCircle className="h-4 w-4" /> Deny
+                </button>
+                <button
+                  onClick={() => onUpdateStatus(s.id, "approved")}
+                  className="flex-1 h-10 rounded-xl bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-95"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Authorize
                 </button>
               </div>
-              {o.status === "assigned" && (
-                <p className="mt-2 text-[10px] text-cta font-bold">
-                  Awaiting rider acceptance · {o.assignedRiderName}
-                </p>
-              )}
             </div>
           ))}
         </div>
@@ -581,174 +527,198 @@ function RecordsInbox() {
   );
 }
 
-function RecordsActive() {
-  useOrders();
-  const active = ordersStore
-    .list()
-    .filter((o) => o.status === "accepted" || o.status === "in_transit");
-  return (
-    <div>
-      <h3 className="text-base font-bold text-foreground mb-3">Active deliveries</h3>
-      {active.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground text-sm rounded-2xl bg-card border border-border">
-          None active.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {active.map((o) => (
-            <div key={o.id} className="p-3 rounded-2xl bg-card border border-border">
-              <p className="text-sm font-semibold text-foreground truncate">{o.itemDescription}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {o.id} · {o.assignedRiderName} · {o.status}
-              </p>
-              <div className="mt-2 flex gap-2">
-                {o.status === "accepted" && (
-                  <button
-                    onClick={() => ordersStore.advance(o.id, "in_transit")}
-                    className="px-3 h-8 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold"
-                  >
-                    Mark in transit
-                  </button>
-                )}
-                {o.status === "in_transit" && (
-                  <button
-                    onClick={() => ordersStore.advance(o.id, "delivered")}
-                    className="px-3 h-8 rounded-lg bg-success text-success-foreground text-[11px] font-semibold"
-                  >
-                    Mark delivered
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+/* ---------- LOGISTICS MANAGEMENT CONTROLLER ---------- */
 
-/* ---------- LOGISTICS ---------- */
+function LogisticsScope({
+  tab,
+  user,
+  orders,
+  riders,
+  onAssign,
+  onAdvance,
+}: {
+  tab: string;
+  user: { id: string; first_name: string; role: string; full_name: string };
+  orders: MockOrder[];
+  riders: MockRider[];
+  onAssign: (orderId: string, riderId: string, riderName: string) => void;
+  onAdvance: (orderId: string, nextStatus: "in_transit" | "delivered") => void;
+}) {
+  const [picks, setPicks] = useState<Record<string, string>>({});
 
-interface TeleEvent {
-  id: number;
-  ts: string;
-  topic: string;
-  payload: string;
-}
-
-function LogisticsScope({ tab, onSignOut }: { tab: LogisticsTab; onSignOut: () => void }) {
-  useOrders();
-  if (tab === "inbox")
-    return (
-      <div className="space-y-6">
-        <RecordsInbox />
-        <RecordsActive />
-      </div>
-    );
   if (tab === "telemetry") return <LogisticsTelemetry />;
-  if (tab === "catalog")
+  if (tab === "catalog") {
     return (
       <div className="space-y-4">
         <Link
           to="/admin-vendors"
-          className="block p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-3 active:scale-[0.99]"
+          className="block p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-between active:scale-[0.99]"
         >
-          <Store className="h-5 w-5" /> Manage vendor stocks →
+          <div className="flex items-center gap-3">
+            <Store className="h-5 w-5" />
+            <span>Manage Vendor Stocks</span>
+          </div>
+          <span>→</span>
         </Link>
         <ProductCatalog />
       </div>
     );
-  if (tab === "settings") return <SignOut onSignOut={onSignOut} />;
-  const pending = ordersStore.pending().length;
-  const inTransit = ordersStore
-    .list()
-    .filter((o) => o.status === "in_transit" || o.status === "accepted").length;
-  const delivered = ordersStore.list().filter((o) => o.status === "delivered").length;
+  }
+  if (tab === "settings") return <SignOutComponent user={user} />;
+
+  const inboundOrders = orders.filter((o) => o.status === "pending" || o.status === "assigned");
+  const activeOrders = orders.filter((o) => o.status === "accepted" || o.status === "in_transit");
+
   return (
-    <div className="space-y-3">
-      <KPI label="New orders" val={String(pending)} tone="cta" />
-      <KPI label="Riders en route" val={String(inTransit)} tone="primary" />
-      <KPI label="Delivered" val={String(delivered)} tone="success" />
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-foreground mb-3">Manifest Inbound</h3>
+        {inboundOrders.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground text-xs rounded-2xl bg-card border border-border">
+            No inbound items inside channel queue.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {inboundOrders.map((o) => (
+              <div key={o.id} className="p-4 rounded-2xl bg-card border border-border space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-foreground">{o.itemDescription}</p>
+                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-secondary text-foreground">
+                    {o.type}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">{o.id} · Route Gate</p>
+                <div className="text-[11px] text-muted-foreground pt-1">
+                  <p>Origin: {o.senderLocation}</p>
+                  <p>Destination: {o.receiverLocation}</p>
+                </div>
+                <div className="mt-3 flex gap-2 pt-1">
+                  <select
+                    value={picks[o.id] ?? riders[0]?.id ?? ""}
+                    onChange={(e) => setPicks({ ...picks, [o.id]: e.target.value })}
+                    className="flex-1 h-10 px-3 rounded-xl bg-input border border-border text-xs"
+                  >
+                    {riders.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const selectedId = picks[o.id] || riders[0]?.id;
+                      const rider = riders.find((r) => r.id === selectedId);
+                      if (rider) {
+                        onAssign(o.id, rider.id, rider.name);
+                        toast.success(`Manifest mapped cleanly to ${rider.name}`);
+                      }
+                    }}
+                    className="px-4 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-semibold active:scale-95"
+                  >
+                    {o.status === "assigned" ? "Remap" : "Dispatch"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-base font-bold text-foreground mb-3">Active Pipeline Track</h3>
+        {activeOrders.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground text-xs rounded-2xl bg-card border border-border">
+            Transit pipeline fully resolved.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {activeOrders.map((o) => (
+              <div
+                key={o.id}
+                className="p-3 rounded-2xl bg-card border border-border flex items-center justify-between"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{o.itemDescription}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Carrier: {o.assignedRiderName} · Status:{" "}
+                    <span className="text-primary font-bold">{o.status}</span>
+                  </p>
+                </div>
+                <div>
+                  {o.status === "accepted" && (
+                    <button
+                      onClick={() => onAdvance(o.id, "in_transit")}
+                      className="px-3 h-8 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold"
+                    >
+                      Depart
+                    </button>
+                  )}
+                  {o.status === "in_transit" && (
+                    <button
+                      onClick={() => onAdvance(o.id, "delivered")}
+                      className="px-3 h-8 rounded-lg bg-emerald-500 text-white text-[11px] font-semibold"
+                    >
+                      Resolve
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function LogisticsTelemetry() {
-  const [events, setEvents] = useState<TeleEvent[]>([]);
-  const [coord, setCoord] = useState({ x: 30, y: 220 });
+  const [events, setEvents] = useState<
+    { id: number; ts: string; topic: string; payload: string }[]
+  >([]);
+
   useEffect(() => {
-    let n = 0;
-    const id = setInterval(() => {
-      n++;
-      const topics = ["geo.update", "order.dispatched", "rider.heartbeat", "delivery.completed"];
-      const t = topics[n % topics.length];
-      const lat = (6.45 + Math.random() * 0.05).toFixed(5);
-      const lng = (3.4 + Math.random() * 0.05).toFixed(5);
-      setEvents((e) =>
+    const handle = setInterval(() => {
+      const logs = ["geo.ping", "broker.dispatch", "node.heartbeat", "ack.delivery"];
+      const topic = logs[Math.floor(Math.random() * logs.length)];
+      setEvents((prev) =>
         [
           {
-            id: Date.now() + n,
+            id: Date.now(),
             ts: new Date().toLocaleTimeString(),
-            topic: t,
-            payload: `rider=R${20 + (n % 8)} lat=${lat} lng=${lng}`,
+            topic,
+            payload: `lat=${(6.45 + Math.random() * 0.02).toFixed(4)} lng=${(3.4 + Math.random() * 0.02).toFixed(4)} node=active`,
           },
-          ...e,
-        ].slice(0, 30),
+          ...prev,
+        ].slice(0, 15),
       );
-      setCoord((c) => ({
-        x: Math.min(370, c.x + 8 + Math.random() * 6),
-        y: Math.max(40, c.y - 4 - Math.random() * 4),
-      }));
-    }, 1200);
-    return () => clearInterval(id);
+    }, 1500);
+    return () => clearInterval(handle);
   }, []);
+
   return (
-    <div>
-      <div className="relative h-56 rounded-2xl overflow-hidden border border-border bg-gradient-to-br from-secondary to-accent mb-3">
-        <svg
-          className="absolute inset-0 w-full h-full"
-          viewBox="0 0 400 224"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M 30 220 Q 100 180 140 150 T 240 90 Q 300 60 370 50"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeDasharray="5 5"
-            className="text-primary"
-          />
-        </svg>
-        <div
-          className="absolute h-4 w-4 rounded-full bg-cta ring-4 ring-cta/30 transition-all duration-1000"
-          style={{
-            left: `${(coord.x / 400) * 100}%`,
-            top: `${(coord.y / 224) * 100}%`,
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-card/90 px-2 py-1 rounded-lg">
-          <Activity className="h-3 w-3 text-success animate-pulse" />
-          <span className="text-[10px] font-bold text-foreground">Kafka stream active</span>
+    <div className="space-y-3">
+      <div className="relative h-44 rounded-2xl border border-border bg-gradient-to-br from-slate-900 to-indigo-950 flex items-center justify-center overflow-hidden">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded-lg backdrop-blur-md">
+          <Activity className="h-3 w-3 text-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-mono text-white">Stream: Live Socket Connection</span>
         </div>
+        <BarChart3 className="h-12 w-12 text-white/10 animate-bounce" />
       </div>
-      <h3 className="text-sm font-bold text-foreground mb-2">Event log</h3>
-      <div className="rounded-2xl bg-card border border-border p-2 max-h-[320px] overflow-y-auto scrollbar-hide font-mono">
+
+      <h3 className="text-sm font-bold text-foreground">Message Broker Log</h3>
+      <div className="rounded-2xl bg-card border border-border p-2 max-h-[260px] overflow-y-auto font-mono text-[10px] space-y-1.5">
         {events.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-6">Waiting for telemetry…</p>
+          <p className="text-muted-foreground text-center py-4">Awaiting socket messages...</p>
         )}
         {events.map((e) => (
-          <div
-            key={e.id}
-            className="px-2 py-1.5 border-b border-border/50 last:border-0 text-[10px]"
-          >
+          <div key={e.id} className="pb-1.5 border-b border-border/40 last:border-0">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">{e.ts}</span>
-              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">
+              <span className="px-1.5 py-0.2 rounded bg-primary/10 text-primary font-bold">
                 {e.topic}
               </span>
             </div>
-            <p className="text-foreground mt-0.5 truncate">{e.payload}</p>
+            <p className="text-foreground truncate mt-0.5">{e.payload}</p>
           </div>
         ))}
       </div>
@@ -756,75 +726,33 @@ function LogisticsTelemetry() {
   );
 }
 
-function LogisticsRoutes() {
-  const routes = [
-    { id: "RTE-A12", name: "Lagos → Ibadan", load: 84 },
-    { id: "RTE-B07", name: "Lekki → Yaba", load: 62 },
-    { id: "RTE-C03", name: "Apapa → VI", load: 41 },
-  ];
-  return (
-    <div className="flex flex-col gap-2">
-      {routes.map((r) => (
-        <div key={r.id} className="p-3 rounded-2xl bg-card border border-border">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-foreground">{r.name}</p>
-            <span className="text-[10px] text-muted-foreground">{r.id}</span>
-          </div>
-          <div className="mt-2 h-1.5 rounded-full bg-border overflow-hidden">
-            <div className="h-full bg-primary" style={{ width: `${r.load}%` }} />
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-1">Load {r.load}%</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- PRODUCT (merged into Logistics) ---------- */
-
-interface AdminProduct {
-  id: string;
-  name: string;
-  price: number;
-  cat: string;
-}
-
-function VendorsRedirect() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate({ to: "/admin-vendors" });
-  }, [navigate]);
-  return <div className="text-center py-10 text-sm text-muted-foreground">Opening vendors…</div>;
-}
-
 function ProductCatalog() {
-  const [items, setItems] = useState<AdminProduct[]>([
-    { id: "p1", name: "Pro Stand Mixer", price: 549, cat: "Appliances" },
-    { id: "p2", name: "Leather Tote", price: 320, cat: "Bags" },
-    { id: "p3", name: '4K Smart TV 55"', price: 899, cat: "Electronics" },
+  const [items, setItems] = useState([
+    { id: "p1", name: "Heavy Duty Straps", price: 45, cat: "Rigging" },
+    { id: "p2", name: "High-Visibility Vest", price: 12, cat: "Safety" },
   ]);
+
   return (
     <div className="flex flex-col gap-2">
       {items.map((p) => (
         <div
           key={p.id}
-          className="p-3 rounded-2xl bg-card border border-border flex items-center gap-3"
+          className="p-3 rounded-2xl bg-card border border-border flex items-center justify-between"
         >
-          <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center">
-            <Package className="h-4 w-4" />
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-secondary flex items-center justify-center">
+              <Package className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{p.name}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {p.cat} · ₦{p.price}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {p.cat} · ${p.price}
-            </p>
-          </div>
-          <button className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
-            <Edit3 className="h-3.5 w-3.5" />
-          </button>
           <button
-            onClick={() => setItems((i) => i.filter((x) => x.id !== p.id))}
-            className="h-8 w-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center"
+            onClick={() => setItems((prev) => prev.filter((i) => i.id !== p.id))}
+            className="h-8 w-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center active:scale-90"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -834,45 +762,63 @@ function ProductCatalog() {
   );
 }
 
-/* ---------- shared bits ---------- */
-
-function KPI({
-  label,
-  val,
-  tone,
-}: {
-  label: string;
-  val: string;
-  tone: "cta" | "primary" | "success";
-}) {
-  const tones = {
-    cta: "bg-cta/10 text-cta",
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/10 text-success",
-  };
+function KPI({ label, val, tone }: { label: string; val: string; tone: "cta" | "primary" }) {
+  const styles = tone === "cta" ? "bg-amber-500/10 text-amber-500" : "bg-blue-500/10 text-blue-500";
   return (
     <div className="p-4 rounded-2xl bg-card border border-border flex items-center gap-3">
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${tones[tone]}`}>
+      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${styles}`}>
         <BarChart3 className="h-5 w-5" />
       </div>
-      <div className="flex-1">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className="text-xl font-bold text-foreground">{val}</p>
       </div>
     </div>
   );
 }
 
-function SignOut({ onSignOut }: { onSignOut: () => void }) {
-  const user = auth.current();
+// FIXED: Clean props engine injection strategy avoids duplication network overhead loops
+function SignOutComponent({ user }: { user: { id: string; role: string; full_name: string } }) {
+  const navigate = useNavigate();
+  const [isSignOutPending, setIsSignOutPending] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSignOutPending(true);
+    try {
+      if (user.role === "rider") {
+        await supabase.from("riders").update({ is_available: false }).eq("user_id", user.id);
+      }
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      toast.success("Identity session terminated safely");
+      navigate({ to: "/login" });
+    } catch (err) {
+      toast.error("Sign out process encountered a fault");
+    } finally {
+      setIsSignOutPending(false);
+    }
+  };
+
   return (
-    <div>
-      <ProfileHeader user={user} />
+    <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
+      <div>
+        <p className="text-sm font-semibold text-foreground">{user.full_name}</p>
+        <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">
+          {user.role} Authorization Node
+        </p>
+      </div>
       <button
-        onClick={onSignOut}
-        className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm"
+        onClick={handleSignOut}
+        disabled={isSignOutPending}
+        className="h-10 px-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 text-sm font-semibold transition hover:bg-red-500/20 disabled:opacity-50 active:scale-[0.98]"
       >
-        <LogOut className="h-5 w-5" /> Sign out
+        {isSignOutPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <LogOut className="h-4 w-4" />
+        )}
+        Disconnect
       </button>
     </div>
   );

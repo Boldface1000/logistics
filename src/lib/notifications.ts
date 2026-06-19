@@ -2,8 +2,8 @@
  * Notification infrastructure — isomorphic wrapper.
  *
  * Production path: Firebase Cloud Messaging via HTTP v1 API.
- *   Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
- *   When all three are present, sendPush() POSTs to FCM.
+ * Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
+ * When all three are present, sendPush() POSTs to FCM.
  *
  * Development / missing-creds path: silent fallback to console.log so
  * the critical app path never breaks while credentials are being provisioned.
@@ -14,10 +14,10 @@
  */
 
 export type NotificationKind =
-  | "signup.new"            // super-admin alert
-  | "order.assigned"        // rider alert
-  | "payment.confirmed"     // rider alert (after super-admin approves transfer)
-  | "delivery.completed";   // customer alert
+  | "signup.new" // super-admin alert
+  | "order.assigned" // rider alert
+  | "payment.confirmed" // rider alert (after super-admin approves transfer)
+  | "delivery.completed"; // customer alert
 
 export interface NotificationPayload {
   kind: NotificationKind;
@@ -59,8 +59,7 @@ async function getAccessToken(creds: FcmCreds): Promise<string> {
     iat: now,
     exp: now + 3600,
   };
-  const b64 = (s: string) =>
-    btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const b64 = (s: string) => btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
   const unsigned = `${b64(JSON.stringify(header))}.${b64(JSON.stringify(claim))}`;
 
   // Import the RSA private key (PKCS#8 PEM → CryptoKey)
@@ -130,13 +129,20 @@ async function postFcm(
 /**
  * Send a push. Safe to call from anywhere on the server.
  * Returns { delivered: number } so callers can log without throwing.
- * Never throws on missing credentials — falls back to console.log.
+ * Never throws on missing credentials — falls back to console.log/warnings.
  */
 export async function sendPush(
   payload: NotificationPayload,
-): Promise<{ delivered: number; mode: "fcm" | "log" }> {
+): Promise<{ delivered: number; mode: "fcm" | "log" | "disabled" }> {
   const creds = readCreds();
+  const isProd = import.meta.env.PROD;
+
   if (!creds) {
+    if (isProd) {
+      // In production, remain silent and securely mask the missing credentials configuration context.
+      return { delivered: 0, mode: "disabled" };
+    }
+
     console.log("[notifications:log]", payload.kind, payload.title, payload.body, {
       userIds: payload.userIds?.length ?? 0,
       topic: payload.topic ?? null,
@@ -164,15 +170,31 @@ export async function sendPush(
           await postFcm(creds, accessToken, { token: row.token }, payload);
           delivered += 1;
         } catch (err) {
-          console.warn("[notifications] token send failed", err);
+          // Keep error reporting completely clean and non-verbose in production
+          if (isProd) {
+            console.warn("[notifications] Transmission dropped for targeted subscription token.");
+          } else {
+            console.warn("[notifications] Token send failed:", err);
+          }
         }
       }
     }
 
     return { delivered, mode: "fcm" };
   } catch (err) {
-    console.error("[notifications] FCM failure, falling back to log:", err);
-    console.log("[notifications:log:fallback]", payload);
+    if (isProd) {
+      console.error("[notifications] FCM execution transmission infrastructure exception.");
+      console.warn("[notifications:fallback] Payload suppressed. Event Metadata:", {
+        kind: payload.kind,
+        titleLength: payload.title?.length ?? 0,
+        bodyLength: payload.body?.length ?? 0,
+        userIdsCount: payload.userIds?.length ?? 0,
+        topic: payload.topic ?? null,
+      });
+    } else {
+      console.error("[notifications] FCM failure, falling back to log:", err);
+      console.log("[notifications:log:fallback]", payload);
+    }
     return { delivered: 0, mode: "log" };
   }
 }

@@ -11,7 +11,10 @@ function PrivacyPage() {
   return (
     <MobileShell>
       <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border">
-        <Link to="/" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95">
+        <Link
+          to="/"
+          className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex-1">
@@ -23,8 +26,8 @@ function PrivacyPage() {
 
       <main className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide text-sm text-foreground leading-relaxed">
         <p className="text-muted-foreground mb-4">
-          This policy explains what information EasyBlue collects, how we use it, and the
-          security controls protecting your account and shipments.
+          This policy explains what information EasyBlue collects, how we use it, and the security
+          controls protecting your account and shipments.
         </p>
 
         <Section title="1. Information We Collect">
@@ -55,30 +58,33 @@ function PrivacyPage() {
         </Section>
 
         <Section title="6. Your Choices">
-          You may review, export, or delete your data from Settings → Security at any time.
-          Closing your account triggers a 30-day soft-delete window for compliance recovery.
+          You may review, export, or delete your data from Settings → Security at any time. Closing
+          your account triggers a 30-day soft-delete window for compliance recovery.
         </Section>
 
         <Section title="7. Data Sharing">
-          We share the minimum data required to complete an order: customer name/drop-off with
-          the assigned Rider, delivery confirmation with the Partner, and aggregated metrics with
+          We share the minimum data required to complete an order: customer name/drop-off with the
+          assigned Rider, delivery confirmation with the Partner, and aggregated metrics with
           analytics providers under strict contracts.
         </Section>
 
         <Section title="8. Security Reports">
-          Suspect abuse or a vulnerability? Email
-          {" "}<span className="text-primary font-medium">security@easyblue.test</span> — we
-          acknowledge reports within one business day.
+          Suspect abuse or a vulnerability? Email{" "}
+          <span className="text-primary font-medium">security@easyblue.test</span> — we acknowledge
+          reports within one business day.
         </Section>
 
         <Section title="9. Updates">
-          Material changes to this policy will be announced in-app at least 14 days before they
-          take effect.
+          Material changes to this policy will be announced in-app at least 14 days before they take
+          effect.
         </Section>
 
         <p className="text-xs text-muted-foreground mt-6">
           See also our{" "}
-          <Link to="/terms" className="text-primary font-semibold">Terms of Use</Link>.
+          <Link to="/terms" className="text-primary font-semibold">
+            Terms of Use
+          </Link>
+          .
         </p>
       </main>
     </MobileShell>

@@ -1,11 +1,11 @@
-# TODO - Standard booking sender/receiver/payment fields
+src/routes/login.tsx(Add onClick handler to "Forgot?" button)
+src/routes/callback.tsx
+src/routes/\_authenticated/route.tsx
+supabase/migration/20260608092801\_\*.sql
+src/routes/admin-vendors.tsx
 
-- [x] Step 1: Update `src/routes/standard-booking.tsx` UI inputs and `ordersStore.create()` mapping.
-- [x] Step 2: Update `src/lib/orders-store.ts` `OrderRecord` type and ensure create/state transitions include new fields.
-- [x] Step 3: Update `db/schema.sql` `orders` table to include sender/receiver phone/name/location + payment_mode.
+This document provides a comprehensive analysis of the EasyBlue Logistics project, identifying critical errors in the codebase and providing detailed fixes. The project has a fundamental architectural split between two authentication models, file duplication issues, and missing features that obstruct user interaction and experience.
 
-- [ ] Step 4: Update `src/routes/admin.tsx` order cards/table rows to display new sender/receiver/payment info.
-- [ ] Step 5: Update `src/routes/rider-dashboard.tsx` assignment/history rows to display new receiver info + payment_mode if applicable.
-- [ ] Step 6: Update `src/routes/history.tsx` TxRow/ReceiptModal usage to display/print new fields.
-- [ ] Step 7: Update `src/components/ReceiptModal.tsx` receipt lines to include sender/receiver names/locations/phones and payment_mode.
-- [ ] Step 8: Run typecheck/build to confirm compilation.
+for email confirmation redirect, i coundnt find a such option, for authentication, there are sub options of confirm signup, invite user, magic link or otp, change email address, reset password, reauthentication. and for security options, there are the toggle options of password changed, email address changed, phone number changed, signin metyhod removed, mfa method added, mfa method removed.
+
+which schema table do i run in order from first to last?

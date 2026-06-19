@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, Send, User as UserIcon, Store, Bike } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/client";
 
 interface Convo {
   user_id: string;
@@ -20,7 +20,13 @@ interface Msg {
   created_at: string;
 }
 
-export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function AdminChatDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [filter, setFilter] = useState<"all" | "customer" | "vendor">("all");
   const [convos, setConvos] = useState<Convo[]>([]);
   const [active, setActive] = useState<Convo | null>(null);
@@ -43,26 +49,39 @@ export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenC
     const byUser = new Map<string, { last_body: string; last_at: string; unread: number }>();
     for (const m of data) {
       const cur = byUser.get(m.conversation_user_id);
-      if (!cur) byUser.set(m.conversation_user_id, { last_body: m.body, last_at: m.created_at, unread: 0 });
+      if (!cur)
+        byUser.set(m.conversation_user_id, { last_body: m.body, last_at: m.created_at, unread: 0 });
       if (!m.sender_is_admin && !m.read_at) {
         const e = byUser.get(m.conversation_user_id)!;
         e.unread += 1;
       }
     }
     const ids = Array.from(byUser.keys());
-    if (ids.length === 0) { setConvos([]); return; }
+    if (ids.length === 0) {
+      setConvos([]);
+      return;
+    }
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("id, display_name, first_name, last_name, email").in("id", ids),
+      supabase
+        .from("profiles")
+        .select("id, display_name, first_name, last_name, email")
+        .in("id", ids),
       supabase.from("user_roles").select("user_id, role").in("user_id", ids),
     ]);
     const out: Convo[] = ids.map((id) => {
       const p = profiles?.find((x) => x.id === id);
       const rs = (roles ?? []).filter((r) => r.user_id === id).map((r) => r.role as string);
-      const role: Convo["role"] = rs.includes("vendor") ? "vendor" : rs.includes("rider") ? "rider" : "customer";
+      const role: Convo["role"] = rs.includes("vendor")
+        ? "vendor"
+        : rs.includes("rider")
+          ? "rider"
+          : "customer";
       const meta = byUser.get(id)!;
       return {
         user_id: id,
-        display_name: p?.display_name ?? (`${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || p?.email || "User"),
+        display_name:
+          p?.display_name ??
+          (`${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || p?.email || "User"),
         email: p?.email ?? "",
         role,
         ...meta,
@@ -90,7 +109,8 @@ export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenC
         .order("created_at", { ascending: true });
       if (alive && data) setMessages(data as Msg[]);
       // mark customer messages as read
-      await supabase.from("support_messages")
+      await supabase
+        .from("support_messages")
         .update({ read_at: new Date().toISOString() })
         .eq("conversation_user_id", active.user_id)
         .eq("sender_is_admin", false)
@@ -98,10 +118,15 @@ export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenC
     };
     load();
     const t = setInterval(load, 5000);
-    return () => { alive = false; clearInterval(t); };
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
   }, [active]);
 
-  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages]);
 
   const send = async () => {
     const body = draft.trim();
@@ -118,7 +143,13 @@ export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const filtered = convos.filter((c) => filter === "all" || c.role === filter);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setActive(null); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v) setActive(null);
+      }}
+    >
       <DialogContent className="max-w-md p-0 gap-0 max-h-[85vh] overflow-hidden flex flex-col">
         {!active ? (
           <>
@@ -131,59 +162,121 @@ export function AdminChatDialog({ open, onOpenChange }: { open: boolean; onOpenC
                     key={f}
                     onClick={() => setFilter(f)}
                     className={`h-8 rounded-lg text-xs font-semibold capitalize ${
-                      filter === f ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+                      filter === f
+                        ? "bg-primary text-primary-foreground shadow"
+                        : "text-muted-foreground"
                     }`}
-                  >{f}</button>
+                  >
+                    {f}
+                  </button>
                 ))}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {filtered.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">No conversations yet.</p>
-              ) : filtered.map((c) => (
-                <button key={c.user_id} onClick={() => setActive(c)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-left active:scale-[0.99]">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    c.role === "vendor" ? "bg-primary/10 text-primary" : c.role === "rider" ? "bg-cta/10 text-cta" : "bg-secondary text-secondary-foreground"
-                  }`}>
-                    {c.role === "vendor" ? <Store className="h-4 w-4" /> : c.role === "rider" ? <Bike className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">{c.display_name}</p>
-                      <span className="text-[10px] text-muted-foreground capitalize">{c.role}</span>
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  No conversations yet.
+                </p>
+              ) : (
+                filtered.map((c) => (
+                  <button
+                    key={c.user_id}
+                    onClick={() => setActive(c)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border text-left active:scale-[0.99]"
+                  >
+                    <div
+                      className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                        c.role === "vendor"
+                          ? "bg-primary/10 text-primary"
+                          : c.role === "rider"
+                            ? "bg-cta/10 text-cta"
+                            : "bg-secondary text-secondary-foreground"
+                      }`}
+                    >
+                      {c.role === "vendor" ? (
+                        <Store className="h-4 w-4" />
+                      ) : c.role === "rider" ? (
+                        <Bike className="h-4 w-4" />
+                      ) : (
+                        <UserIcon className="h-4 w-4" />
+                      )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{c.last_body}</p>
-                  </div>
-                  {c.unread > 0 && (
-                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-cta text-cta-foreground text-[10px] font-bold flex items-center justify-center">{c.unread}</span>
-                  )}
-                </button>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {c.display_name}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground capitalize">
+                          {c.role}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{c.last_body}</p>
+                    </div>
+                    {c.unread > 0 && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-cta text-cta-foreground text-[10px] font-bold flex items-center justify-center">
+                        {c.unread}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-2 p-3 border-b border-border bg-primary text-primary-foreground">
-              <button onClick={() => setActive(null)} className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center">
+              <button
+                onClick={() => setActive(null)}
+                className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center"
+              >
                 <ArrowLeft className="h-4 w-4" />
               </button>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-sm truncate">{active.display_name}</DialogTitle>
-                <p className="text-[10px] opacity-80 capitalize">{active.role} · {active.email}</p>
+                <p className="text-[10px] opacity-80 capitalize">
+                  {active.role} · {active.email}
+                </p>
               </div>
             </div>
-            <div ref={scrollRef} className="h-80 flex-1 overflow-y-auto p-3 space-y-2 bg-background">
+            <div
+              ref={scrollRef}
+              className="h-80 flex-1 overflow-y-auto p-3 space-y-2 bg-background"
+            >
               {messages.map((m) => (
-                <div key={m.id} className={`flex ${m.sender_is_admin ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
-                    m.sender_is_admin ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                  }`}>{m.body}</div>
+                <div
+                  key={m.id}
+                  className={`flex ${m.sender_is_admin ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
+                      m.sender_is_admin
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    }`}
+                  >
+                    {m.body}
+                  </div>
                 </div>
               ))}
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex items-center gap-2 p-3 border-t border-border bg-card">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000} placeholder="Reply…" className="flex-1 h-10 px-3 rounded-xl bg-input border border-border text-sm" />
-              <button type="submit" className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                send();
+              }}
+              className="flex items-center gap-2 p-3 border-t border-border bg-card"
+            >
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={4000}
+                placeholder="Reply…"
+                className="flex-1 h-10 px-3 rounded-xl bg-input border border-border text-sm"
+              />
+              <button
+                type="submit"
+                className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-95"
+              >
                 <Send className="h-4 w-4" />
               </button>
             </form>

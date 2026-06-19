@@ -11,7 +11,10 @@ function TermsPage() {
   return (
     <MobileShell>
       <header className="safe-top px-5 pb-4 flex items-center gap-3 border-b border-border">
-        <Link to="/" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95">
+        <Link
+          to="/"
+          className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex-1">
@@ -23,13 +26,13 @@ function TermsPage() {
 
       <main className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide text-sm text-foreground leading-relaxed">
         <p className="text-muted-foreground mb-4">
-          These Terms of Use ("Terms") govern your use of the EasyBlue Logistics platform,
-          including the mobile app, marketplace, and rider network.
+          These Terms of Use ("Terms") govern your use of the EasyBlue Logistics platform, including
+          the mobile app, marketplace, and rider network.
         </p>
 
         <Section title="1. Acceptance">
-          By creating an account or using EasyBlue, you agree to be bound by these Terms and
-          our Privacy &amp; Security Policy. If you do not agree, please discontinue use.
+          By creating an account or using EasyBlue, you agree to be bound by these Terms and our
+          Privacy &amp; Security Policy. If you do not agree, please discontinue use.
         </Section>
 
         <Section title="2. Eligibility">
@@ -39,14 +42,14 @@ function TermsPage() {
 
         <Section title="3. Account Responsibilities">
           You are responsible for maintaining the confidentiality of your credentials, for all
-          activity under your account, and for ensuring your registration information stays
-          accurate and up to date.
+          activity under your account, and for ensuring your registration information stays accurate
+          and up to date.
         </Section>
 
         <Section title="4. Marketplace &amp; Orders">
           Products listed on EasyBlue are sold by independent Partners. Pricing, taxes,
-          partner-discount eligibility, and delivery windows are shown at checkout and binding
-          once an order is confirmed.
+          partner-discount eligibility, and delivery windows are shown at checkout and binding once
+          an order is confirmed.
         </Section>
 
         <Section title="5. Rider Conduct">
@@ -70,18 +73,21 @@ function TermsPage() {
         </Section>
 
         <Section title="9. Changes">
-          We may update these Terms periodically. Material changes will be announced in-app and
-          take effect 14 days after notice unless you object by closing your account.
+          We may update these Terms periodically. Material changes will be announced in-app and take
+          effect 14 days after notice unless you object by closing your account.
         </Section>
 
         <Section title="10. Contact">
-          Questions? Reach our support team via the in-app helpdesk or by email at
-          {" "}<span className="text-primary font-medium">support@easyblue.test</span>.
+          Questions? Reach our support team via the in-app helpdesk or by email at{" "}
+          <span className="text-primary font-medium">support@easyblue.test</span>.
         </Section>
 
         <p className="text-xs text-muted-foreground mt-6">
           See also our{" "}
-          <Link to="/privacy" className="text-primary font-semibold">Privacy &amp; Security Policy</Link>.
+          <Link to="/privacy" className="text-primary font-semibold">
+            Privacy &amp; Security Policy
+          </Link>
+          .
         </p>
       </main>
     </MobileShell>

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
-import { ordersStore } from "@/lib/orders-store";
+import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/standard-booking")({
   head: () => ({ meta: [{ title: "Standard Booking — EasyBlue" }] }),
@@ -35,7 +35,7 @@ function StandardBookingPage() {
       </MobileShell>
     );
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = auth.current();
     if (!user) {
@@ -44,13 +44,13 @@ function StandardBookingPage() {
       return;
     }
     if (
-      !senderName ||
-      !senderLocation ||
-      !senderPhone ||
-      !receiverName ||
-      !receiverLocation ||
-      !receiverPhone ||
-      !item ||
+      !senderName.trim() ||
+      !senderLocation.trim() ||
+      !senderPhone.trim() ||
+      !receiverName.trim() ||
+      !receiverLocation.trim() ||
+      !receiverPhone.trim() ||
+      !item.trim() ||
       !paymentMode
     ) {
       toast.error("All fields required");
@@ -58,36 +58,36 @@ function StandardBookingPage() {
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      const o = ordersStore.create({
-        type: "standard",
-        customerEmail: user.email,
-        customerFirstName: user.firstName,
-        customerLastName: user.lastName,
-        customerPhone: user.phone ?? "",
 
-        // sender == pickup
-        senderName,
-        senderLocation,
-        senderPhone,
-
-        // receiver == dropoff
-        receiverName,
-        receiverLocation,
-        receiverPhone,
-
-        pickup: senderLocation,
-        dropoff: receiverLocation,
-
-        paymentMode,
-        itemDescription: item,
+    try {
+      // Direct call to Database RPC layer
+      const { data: orderId, error } = await supabase.rpc("create_db_order", {
+        p_customer_id: user.id,
+        p_sender_name: senderName,
+        p_sender_location: senderLocation,
+        p_sender_phone: senderPhone,
+        p_receiver_name: receiverName,
+        p_receiver_location: receiverLocation,
+        p_receiver_phone: receiverPhone,
+        p_payment_mode: paymentMode,
+        p_item_description: item,
+        p_total_cents: 0, // Optional default baseline configuration
       });
+
+      if (error) throw error;
 
       toast.success("Booking confirmed", {
-        description: `Reference ${o.id} — a rider will be assigned shortly.`,
+        description: `Reference ${orderId} — a rider will be assigned shortly.`,
       });
       navigate({ to: backTarget() });
-    }, 600);
+    } catch (err: any) {
+      console.error("Database Order Persistence Error:", err);
+      toast.error("Failed to confirm booking", {
+        description: err.message || "An unexpected database exception occurred.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -101,7 +101,6 @@ function StandardBookingPage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-base font-bold text-foreground">Standard Booking</h1>
-          <p className="text-xs text-muted-foreground">Door-to-door rider dispatch</p>
         </div>
         <Bike className="h-5 w-5 text-primary" />
       </header>

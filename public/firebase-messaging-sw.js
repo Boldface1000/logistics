@@ -25,7 +25,9 @@ self.addEventListener("push", (event) => {
   let payload = { notification: { title: "EasyBlue", body: "New update" } };
   try {
     if (event.data) payload = event.data.json();
-  } catch (_e) { /* keep default */ }
+  } catch (_e) {
+    /* keep default */
+  }
 
   const n = payload.notification || {};
   event.waitUntil(

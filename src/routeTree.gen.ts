@@ -18,16 +18,18 @@ import { Route as RiderDashboardRouteImport } from './routes/rider-dashboard'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
 import { Route as ParkWaybillRouteImport } from './routes/park-waybill'
+import { Route as MarketplaceCheckoutRouteImport } from './routes/marketplace-checkout'
 import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AdminVendorsRouteImport } from './routes/admin-vendors'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 
 const VendorDashboardRoute = VendorDashboardRouteImport.update({
   id: '/vendor-dashboard',
@@ -74,6 +76,11 @@ const ParkWaybillRoute = ParkWaybillRouteImport.update({
   path: '/park-waybill',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceCheckoutRoute = MarketplaceCheckoutRouteImport.update({
+  id: '/marketplace-checkout',
+  path: '/marketplace-checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketplaceRoute = MarketplaceRouteImport.update({
   id: '/marketplace',
   path: '/marketplace',
@@ -89,14 +96,19 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminVendorsRoute = AdminVendorsRouteImport.update({
@@ -113,26 +125,28 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
-  id: '/me',
-  path: '/me',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
   '/admin': typeof AdminRoute
   '/admin-vendors': typeof AdminVendorsRoute
-  '/auth': typeof AuthRoute
+  '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/marketplace': typeof MarketplaceRoute
+  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
   '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
@@ -142,17 +156,18 @@ export interface FileRoutesByFullPath {
   '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
   '/vendor-dashboard': typeof VendorDashboardRoute
-  '/me': typeof AuthenticatedMeRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/admin-vendors': typeof AdminVendorsRoute
-  '/auth': typeof AuthRoute
+  '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/marketplace': typeof MarketplaceRoute
+  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
   '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
@@ -162,19 +177,21 @@ export interface FileRoutesByTo {
   '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
   '/vendor-dashboard': typeof VendorDashboardRoute
-  '/me': typeof AuthenticatedMeRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
   '/admin-vendors': typeof AdminVendorsRoute
-  '/auth': typeof AuthRoute
+  '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/marketplace': typeof MarketplaceRoute
+  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
   '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
@@ -184,7 +201,8 @@ export interface FileRoutesById {
   '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
   '/vendor-dashboard': typeof VendorDashboardRoute
-  '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -192,11 +210,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin-vendors'
-    | '/auth'
+    | '/callback'
     | '/dashboard'
+    | '/forgot-password'
     | '/history'
     | '/login'
     | '/marketplace'
+    | '/marketplace-checkout'
     | '/park-waybill'
     | '/pending-approval'
     | '/privacy'
@@ -206,17 +226,18 @@ export interface FileRouteTypes {
     | '/stocks'
     | '/terms'
     | '/vendor-dashboard'
-    | '/me'
+    | '/auth/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/admin'
     | '/admin-vendors'
-    | '/auth'
+    | '/callback'
     | '/dashboard'
+    | '/forgot-password'
     | '/history'
     | '/login'
     | '/marketplace'
+    | '/marketplace-checkout'
     | '/park-waybill'
     | '/pending-approval'
     | '/privacy'
@@ -226,18 +247,20 @@ export interface FileRouteTypes {
     | '/stocks'
     | '/terms'
     | '/vendor-dashboard'
-    | '/me'
+    | '/auth/reset-password'
+    | '/'
   id:
     | '__root__'
-    | '/'
     | '/_authenticated'
     | '/admin'
     | '/admin-vendors'
-    | '/auth'
+    | '/callback'
     | '/dashboard'
+    | '/forgot-password'
     | '/history'
     | '/login'
     | '/marketplace'
+    | '/marketplace-checkout'
     | '/park-waybill'
     | '/pending-approval'
     | '/privacy'
@@ -247,19 +270,21 @@ export interface FileRouteTypes {
     | '/stocks'
     | '/terms'
     | '/vendor-dashboard'
-    | '/_authenticated/me'
+    | '/auth/reset-password'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
   AdminVendorsRoute: typeof AdminVendorsRoute
-  AuthRoute: typeof AuthRoute
+  CallbackRoute: typeof CallbackRoute
   DashboardRoute: typeof DashboardRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MarketplaceRoute: typeof MarketplaceRoute
+  MarketplaceCheckoutRoute: typeof MarketplaceCheckoutRoute
   ParkWaybillRoute: typeof ParkWaybillRoute
   PendingApprovalRoute: typeof PendingApprovalRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -269,6 +294,7 @@ export interface RootRouteChildren {
   StocksRoute: typeof StocksRoute
   TermsRoute: typeof TermsRoute
   VendorDashboardRoute: typeof VendorDashboardRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -336,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParkWaybillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace-checkout': {
+      id: '/marketplace-checkout'
+      path: '/marketplace-checkout'
+      fullPath: '/marketplace-checkout'
+      preLoaderRoute: typeof MarketplaceCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/marketplace': {
       id: '/marketplace'
       path: '/marketplace'
@@ -357,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -364,11 +404,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-vendors': {
@@ -392,44 +432,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/me': {
-      id: '/_authenticated/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof AuthenticatedMeRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
   AdminVendorsRoute: AdminVendorsRoute,
-  AuthRoute: AuthRoute,
+  CallbackRoute: CallbackRoute,
   DashboardRoute: DashboardRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MarketplaceRoute: MarketplaceRoute,
+  MarketplaceCheckoutRoute: MarketplaceCheckoutRoute,
   ParkWaybillRoute: ParkWaybillRoute,
   PendingApprovalRoute: PendingApprovalRoute,
   PrivacyRoute: PrivacyRoute,
@@ -439,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   StocksRoute: StocksRoute,
   TermsRoute: TermsRoute,
   VendorDashboardRoute: VendorDashboardRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

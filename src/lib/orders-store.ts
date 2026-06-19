@@ -11,6 +11,21 @@ export type OrderStatus =
 
 export type PaymentMode = "transfer" | "cash";
 
+export type WaybillFields = {
+  parkName: string;
+  contactNumber: string;
+  driverOrStorekeeperNumber: string;
+  nameOnParcel: string;
+  phoneNumberOnParcel: string;
+  waybill?: string;
+  deliveryCode?: string;
+  contentOfItem: string;
+  amountToBePaid: string;
+  receiverName: string;
+  dropOffPoint: string;
+  dropOffNumber: string;
+};
+
 export interface OrderRecord {
   id: string;
   type: OrderType;
@@ -39,6 +54,10 @@ export interface OrderRecord {
   itemDescription: string;
 
   priceCents?: number;
+
+  // Park-waybill specific fields
+  waybillFields?: WaybillFields;
+
   status: OrderStatus;
   assignedRiderId?: string;
   assignedRiderName?: string;

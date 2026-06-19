@@ -12,7 +12,9 @@ export function PageLoader({ label = "Loading" }: { label?: string }) {
         <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-cta ring-4 ring-background animate-ping" />
       </div>
       <p className="mt-5 text-sm font-bold text-foreground tracking-wide">EasyBlue</p>
-      <p className="text-[11px] text-muted-foreground uppercase tracking-[0.25em] mt-0.5">{label}…</p>
+      <p className="text-[11px] text-muted-foreground uppercase tracking-[0.25em] mt-0.5">
+        {label}…
+      </p>
       <div className="mt-4 h-1 w-32 rounded-full bg-secondary overflow-hidden">
         <div className="h-full w-1/3 bg-primary animate-[loadbar_1.2s_ease-in-out_infinite]" />
       </div>

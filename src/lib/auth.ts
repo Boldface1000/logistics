@@ -1,95 +1,135 @@
-// Client-side auth for the demo. Recognizes seeded customer, vendor, rider, and split admin scopes.
-export type AuthRole = "customer" | "vendor" | "rider" | "admin";
-export type AdminScope = "super" | "logistics";
+import { supabase } from "@/integrations/client";
 
 export interface AuthUser {
+  id: string;
   email: string;
-  role: AuthRole;
   firstName: string;
   lastName: string;
-  phone?: string;
-  /** Only set when role === "admin" */
-  adminScope?: AdminScope;
+  role: string;
+  approval: string;
+  profilePhotoUrl?: string;
 }
 
-const KEY = "easyblue.session";
-
-interface DemoAccount { email: string; password: string; user: AuthUser; }
-
-const DEMO: DemoAccount[] = [
-  // Customer
-  {
-    email: "eferideogheneudumebraye@gmail.com",
-    password: "781227",
-    user: {
-      email: "eferideogheneudumebraye@gmail.com",
-      role: "customer",
-      firstName: "Eferi",
-      lastName: "Udumebraye",
-      phone: "+2348010000005",
-    },
-  },
-  // Vendor demo
-  {
-    email: "bola@easyblue.test",
-    password: "781227",
-    user: { email: "bola@easyblue.test", role: "vendor", firstName: "Bola", lastName: "Vendor", phone: "+2348010000002" },
-  },
-  // Rider demo
-  {
-    email: "chi@easyblue.test",
-    password: "781227",
-    user: { email: "chi@easyblue.test", role: "rider", firstName: "Chi", lastName: "Rider", phone: "+2348010000003" },
-  },
-  // Split admins
-  {
-    email: "easybluelogistics@gmail.com",
-    password: "781227",
-    user: { email: "easybluelogistics@gmail.com", role: "admin", firstName: "Super", lastName: "Admin", adminScope: "super" },
-  },
-  {
-    email: "easybluelogisticslogistic@gmail.com",
-    password: "781227",
-    user: { email: "easybluelogisticslogistic@gmail.com", role: "admin", firstName: "Logistics", lastName: "Admin", adminScope: "logistics" },
-  },
-  {
-    email: "easybluelogisticsrecords@gmail.com",
-    password: "781227",
-    user: { email: "easybluelogisticsrecords@gmail.com", role: "admin", firstName: "Operations", lastName: "Admin", adminScope: "logistics" },
-  },
-  {
-    email: "easybluelogisticsproduct@gmail.com",
-    password: "781227",
-    user: { email: "easybluelogisticsproduct@gmail.com", role: "admin", firstName: "Logistics", lastName: "Admin", adminScope: "logistics" },
-  },
-];
-
 export const auth = {
-  signIn(email: string, password: string): AuthUser | null {
-    const match = DEMO.find(
-      (d) => d.email.toLowerCase() === email.trim().toLowerCase() && d.password === password,
-    );
-    if (!match) return null;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(KEY, JSON.stringify(match.user));
+  /**
+   * Retrieves the current authenticated session cleanly from storage.
+   */
+  async getSession() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      // Mask session lookup exceptions from flooding the logging aggregators
+      if (import.meta.env.DEV) {
+        console.error("Auth session sync failure:", error.message);
+      }
+      return null;
     }
-    return match.user;
+    return data.session;
   },
-  current(): AuthUser | null {
-    if (typeof window === "undefined") return null;
-    try { return JSON.parse(window.localStorage.getItem(KEY) ?? "null"); }
-    catch { return null; }
+
+  /**
+   * Retrieves the current authenticated user with profile information.
+   */
+  async current(): Promise<AuthUser | null> {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        if (import.meta.env.DEV) {
+          console.error("Failed to get current user:", error?.message);
+        }
+        return null;
+      }
+
+      const user = data.user;
+
+      // Fetch user profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError && import.meta.env.DEV) {
+        console.error("Failed to fetch user profile:", profileError.message);
+      }
+
+      // Fetch user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      if (rolesError && import.meta.env.DEV) {
+        console.error("Failed to fetch user roles:", rolesError.message);
+      }
+
+      const userRoles = roles?.map((r) => r.role) ?? [];
+      const primaryRole = userRoles[0] || "customer";
+
+      return {
+        id: user.id,
+        email: profile?.email ?? user.email ?? "",
+        firstName: profile?.first_name ?? "",
+        lastName: profile?.last_name ?? "",
+        role: primaryRole,
+        approval: profile?.approval ?? "pending",
+        profilePhotoUrl: profile?.profile_photo_url,
+      };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error fetching current user:", error);
+      }
+      return null;
+    }
   },
-  signOut() {
-    if (typeof window !== "undefined") window.localStorage.removeItem(KEY);
+
+  /**
+   * Drops active tokens and cleans up local persistence items.
+   */
+  async signOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error && import.meta.env.DEV) {
+      console.error("Signout sequence interrupt:", error.message);
+    }
+    window.location.href = "/login";
   },
-  /** Where to send the user after a successful login. */
-  homeFor(user: AuthUser): "/dashboard" | "/vendor-dashboard" | "/rider-dashboard" | "/admin" {
-    switch (user.role) {
-      case "vendor": return "/vendor-dashboard";
-      case "rider":  return "/rider-dashboard";
-      case "admin":  return "/admin";
-      default:       return "/dashboard";
+
+  /**
+   * Initiates a password reset flow by sending a reset email.
+   */
+  async resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Failed to send password reset email");
+    }
+  },
+
+  /**
+   * Updates the user's password using a reset token.
+   */
+  async updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Failed to update password");
+    }
+  },
+
+  /**
+   * Verifies the current user's email.
+   */
+  async verifyEmail(token: string, type: "email_change" | "signup") {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: token,
+      type: type,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Failed to verify email");
     }
   },
 };

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Users,
@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
+import { supabase } from "@/integrations/client"; // FIXED: Realigned with project client import path
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "EasyBlue Logistics — Ship Globally, Deliver Locally" },
@@ -45,13 +46,14 @@ const slides: Slide[] = [
   },
   {
     title: "Vendors Hub",
-    description: "Control panel, stock management, and exclusive partner pricing inventory.",
+    description:
+      "Real-time control panel, stock management, subject to admin operational approval.",
     icons: <Sliders className="h-12 w-12" />,
     accent: "from-primary-glow to-primary",
   },
   {
     title: "Riders Network",
-    description: "Sign up, accept dispatches, and earn locally on your schedule.",
+    description: "Sign up, accept local dispatches, and track earnings on your schedule.",
     icons: <Bike className="h-12 w-12" />,
     accent: "from-cta to-cta/70",
   },
@@ -76,7 +78,20 @@ const slides: Slide[] = [
 
 function WelcomePage() {
   const [idx, setIdx] = useState(0);
+  const navigate = useNavigate();
 
+  // 1. Session Interceptor: Bounce authenticated users straight into the workspace
+  useEffect(() => {
+    async function checkActiveSession() {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        navigate({ to: "/dashboard" });
+      }
+    }
+    checkActiveSession();
+  }, [navigate]);
+
+  // Carousel timer
   useEffect(() => {
     const id = setInterval(() => setIdx((i) => (i + 1) % slides.length), 3500);
     return () => clearInterval(id);
@@ -151,12 +166,12 @@ function WelcomePage() {
       <footer className="safe-bottom px-5 pt-2 flex flex-col gap-2.5 border-t border-border bg-card">
         <Link
           to="/signup"
-          className="w-full h-13 py-3.5 rounded-2xl bg-cta text-cta-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-cta/30"
+          className="w-full h-12 py-3.5 rounded-2xl bg-cta text-cta-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-cta/30"
         >
           Get Started — Sign Up <ChevronRight className="h-5 w-5" />
         </Link>
         <Link
-          to="/auth"
+          to="/login" // FIXED: Standardized destination link mapping across authorization layouts
           className="w-full py-3.5 rounded-2xl bg-secondary text-secondary-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition border border-border"
         >
           Sign In to Account

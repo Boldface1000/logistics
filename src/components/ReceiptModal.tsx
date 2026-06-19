@@ -46,6 +46,18 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
 
     ["Payment Mode", order.paymentMode.toUpperCase()],
 
+    ["Park Name", order.waybillFields?.parkName ?? "—"],
+    ["Contact Number", order.waybillFields?.contactNumber ?? "—"],
+    ["Driver/ Storekeeper No.", order.waybillFields?.driverOrStorekeeperNumber ?? "—"],
+    ["Name on Parcel", order.waybillFields?.nameOnParcel ?? "—"],
+    ["Phone on Parcel", order.waybillFields?.phoneNumberOnParcel ?? "—"],
+    ["Waybill (opt)", order.waybillFields?.waybill ?? "—"],
+    ["Delivery Code (opt)", order.waybillFields?.deliveryCode ?? "—"],
+    ["Content of Item", order.waybillFields?.contentOfItem ?? order.itemDescription],
+    ["Amount to be Paid", order.waybillFields?.amountToBePaid ?? amount],
+    ["Drop-off Point", order.waybillFields?.dropOffPoint ?? order.receiverLocation],
+    ["Drop-off Number", order.waybillFields?.dropOffNumber ?? order.receiverPhone],
+
     ["Item", order.itemDescription],
     ["Amount", amount],
   ];

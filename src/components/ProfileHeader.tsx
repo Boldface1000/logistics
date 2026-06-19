@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
-import { Pencil, User as UserIcon, Camera, History as HistoryIcon, ChevronRight, Check, X } from "lucide-react";
+import {
+  Pencil,
+  User as UserIcon,
+  Camera,
+  History as HistoryIcon,
+  ChevronRight,
+  Check,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { profileStore } from "@/lib/profile-store";
 import type { AuthUser } from "@/lib/auth";
@@ -39,7 +47,9 @@ export function ProfileHeader({ user }: { user: AuthUser | null }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground truncate">{displayName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email ?? "Not signed in"}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.email ?? "Not signed in"}
+            </p>
           </div>
           <button
             type="button"
@@ -126,7 +136,11 @@ function EditBubble({
     >
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-foreground">Edit profile</p>
-        <button onClick={onClose} aria-label="Close" className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center">
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+        >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -151,7 +165,10 @@ function EditBubble({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+          }}
         />
       </div>
 

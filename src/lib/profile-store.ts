@@ -10,8 +10,11 @@ type Map = Record<string, ProfileOverride>;
 
 function read(): Map {
   if (typeof window === "undefined") return {};
-  try { return JSON.parse(window.localStorage.getItem(KEY) ?? "{}"); }
-  catch { return {}; }
+  try {
+    return JSON.parse(window.localStorage.getItem(KEY) ?? "{}");
+  } catch {
+    return {};
+  }
 }
 function write(map: Map) {
   if (typeof window === "undefined") return;
