@@ -6,6 +6,11 @@ import { MobileShell } from "@/components/MobileShell";
 import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/login")({
+  // SSR off: beforeLoad reads the browser-persisted Supabase session (localStorage),
+  // which the server can't see. Rendering this route on the server caused the
+  // server's "no session" markup to diverge from the client's "session exists,
+  // redirecting" pass mid-hydration -> hydration mismatch + setState-before-mount warning.
+  ssr: false,
   head: () => ({ meta: [{ title: "Sign In — EasyBlue" }] }),
   beforeLoad: async () => {
     // Safely check session context before rendering route
@@ -53,15 +58,14 @@ function LoginPage() {
       setLoading(true);
 
       // Sign in via production Supabase engine
+      // FIX: persistSession is not a valid signInWithPassword option in supabase-js v2.
+      // Session persistence is configured at client creation level, not per sign-in call.
       const {
         data: { user },
         error: authError,
       } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
-        options: {
-          persistSession: remember,
-        },
       });
 
       if (authError) throw authError;

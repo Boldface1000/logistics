@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Home,
   Package,
@@ -27,7 +27,7 @@ import { orderQueries } from "@/lib/api-client";
 import { supabase } from "@/integrations/client";
 import type { Order } from "@/types/database.types";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — EasyBlue" }] }),
   component: () => <CustomerDashboard variant="customer" />,
 });
@@ -61,7 +61,7 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
   useRealtimeOrders(qc);
 
   // Stream transit items through custom schema handlers
-  const { data: myOrders = [] } = useSuspenseQuery(orderQueries.mine());
+  const { data: myOrders = [] } = useQuery(orderQueries.mine(userId));
   const pendingForBadge = myOrders.filter((o: Order) => o.status !== "delivered").length;
 
   if (loading || !userId) {

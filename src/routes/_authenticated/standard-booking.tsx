@@ -7,7 +7,7 @@ import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
 
-export const Route = createFileRoute("/standard-booking")({
+export const Route = createFileRoute("/_authenticated/standard-booking")({
   head: () => ({ meta: [{ title: "Standard Booking — EasyBlue" }] }),
   component: StandardBookingPage,
 });

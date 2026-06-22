@@ -8,7 +8,7 @@ import { auth, type AuthUser } from "@/lib/auth";
 import { ordersStore, type OrderRecord } from "@/lib/orders-store";
 import { ridersStore } from "@/lib/riders-store";
 
-export const Route = createFileRoute("/history")({
+export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({ meta: [{ title: "Transaction History — EasyBlue" }] }),
   component: HistoryPage,
 });

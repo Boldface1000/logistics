@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/marketplace')({
+export const Route = createFileRoute('/_authenticated/marketplace')({
   component: RouteComponent,
 })
 

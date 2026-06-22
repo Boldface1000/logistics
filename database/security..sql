@@ -78,4 +78,36 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_registration();
 
+-- 3) Row Level Security for public.users
+-- Without this, RLS blocks every SELECT (including a user reading their own
+-- row right after sign-in), which PostgREST surfaces as a 406 on `.single()`.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'::user_role
+  );
+$$;
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users select own" ON public.users;
+CREATE POLICY "users select own" ON public.users FOR SELECT TO authenticated
+  USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "users select admin" ON public.users;
+CREATE POLICY "users select admin" ON public.users FOR SELECT TO authenticated
+  USING (public.is_admin());
+
+DROP POLICY IF EXISTS "users update admin" ON public.users;
+CREATE POLICY "users update admin" ON public.users FOR UPDATE TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
 COMMIT;

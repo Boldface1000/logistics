@@ -7,7 +7,7 @@ import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
 
-export const Route = createFileRoute("/park-waybill")({
+export const Route = createFileRoute("/_authenticated/park-waybill")({
   head: () => ({ meta: [{ title: "Park Waybill — EasyBlue" }] }),
   component: ParkWaybillPage,
 });

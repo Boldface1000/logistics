@@ -4,7 +4,7 @@ import { ArrowLeft, Package, Calendar, Layers } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { stocksStore } from "@/lib/stocks-store";
 
-export const Route = createFileRoute("/stocks")({
+export const Route = createFileRoute("/_authenticated/stocks")({
   head: () => ({ meta: [{ title: "Stocks — EasyBlue" }] }),
   component: VendorStocksPage,
 });

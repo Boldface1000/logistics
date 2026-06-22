@@ -25,7 +25,7 @@ import { ReceiptModal } from "@/components/ReceiptModal";
 import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/integrations/client";
 
-export const Route = createFileRoute("/rider-dashboard")({
+export const Route = createFileRoute("/_authenticated/rider-dashboard")({
   head: () => ({ meta: [{ title: "Rider Dashboard — EasyBlue" }] }),
   component: RiderDashboard,
 });

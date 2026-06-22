@@ -1,17 +1,17 @@
-/**
- * Notification infrastructure — isomorphic wrapper.
- *
- * Production path: Firebase Cloud Messaging via HTTP v1 API.
- * Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
- * When all three are present, sendPush() POSTs to FCM.
- *
- * Development / missing-creds path: silent fallback to console.log so
- * the critical app path never breaks while credentials are being provisioned.
- *
- * This module is browser-safe (no top-level FCM imports). The actual FCM
- * call lives inside a dynamic import gated by typeof process !== "undefined",
- * so it never ends up in the client bundle.
- */
+// /**
+//  * Notification infrastructure — isomorphic wrapper.
+//  *
+//  * Production path: Firebase Cloud Messaging via HTTP v1 API.
+//  * Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
+//  * When all three are present, sendPush() POSTs to FCM.
+//  *
+//  * Development / missing-creds path: silent fallback to console.log so
+//  * the critical app path never breaks while credentials are being provisioned.
+//  *
+//  * This module is browser-safe (no top-level FCM imports). The actual FCM
+//  * call lives inside a dynamic import gated by typeof process !== "undefined",
+//  * so it never ends up in the client bundle.
+//  */
 
 export type NotificationKind =
   | "signup.new" // super-admin alert
@@ -160,7 +160,7 @@ export async function sendPush(
     }
 
     if (payload.userIds?.length) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } = await import("@/integrations/client.server");
       const { data: subs } = await supabaseAdmin
         .from("push_subscriptions")
         .select("token")

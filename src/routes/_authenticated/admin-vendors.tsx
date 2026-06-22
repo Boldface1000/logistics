@@ -19,7 +19,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 import { supabase } from "@/integrations/client";
 
-export const Route = createFileRoute("/admin-vendors")({
+export const Route = createFileRoute("/_authenticated/admin-vendors")({
   head: () => ({ meta: [{ title: "Approved Vendors — EasyBlue" }] }),
   component: AdminVendorsPage,
 });

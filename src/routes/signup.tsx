@@ -97,6 +97,7 @@ function SignupPage() {
     if (role === "rider")
       return !!(
         base &&
+        form.phone.trim().length >= 7 &&
         form.hasLicense !== null &&
         form.isExperienced !== null &&
         /^\d{11}$/.test(form.nin) &&
@@ -114,7 +115,7 @@ function SignupPage() {
         email: form.email,
         password: form.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/callback`,
           data: {
             first_name: form.firstName,
             last_name: form.lastName,
@@ -133,12 +134,21 @@ function SignupPage() {
 
       if (error) throw error;
 
+      // FIX: vendor/rider go to pending-approval; map "vendor" → "partner" for search param
       if (role === "vendor" || role === "rider") {
-        navigate({ to: "/pending-approval", search: { role } as any });
+        navigate({
+          to: "/pending-approval",
+          search: { role: role === "vendor" ? "partner" : "rider" } as any,
+        });
         return;
       }
 
-      navigate({ to: "/dashboard" });
+      // FIX: customer - show "check your email" instead of navigating to dashboard
+      // Email confirmation must be clicked before the session is valid
+      toast.success("Account created!", {
+        description: "Check your email and click the confirmation link to activate your account.",
+      });
+      navigate({ to: "/login" });
     } catch (err: any) {
       toast.error("Account Creation Failed", {
         description: err.message || "An unexpected system error occurred during registration.",
@@ -319,7 +329,7 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
           </div>
         </Field>
 
-        {role === "customer" && (
+        {(role === "customer" || role === "rider") && (
           <Field label="Phone number">
             <TextInput
               value={form.phone}

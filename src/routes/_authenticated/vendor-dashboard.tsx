@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/client";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 
-export const Route = createFileRoute("/vendor-dashboard")({
+export const Route = createFileRoute("/_authenticated/vendor-dashboard")({
   head: () => ({ meta: [{ title: "Vendor Dashboard — EasyBlue" }] }),
   component: VendorDashboardRoute,
 });

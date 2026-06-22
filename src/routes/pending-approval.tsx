@@ -7,12 +7,16 @@ import { supabase } from "@/integrations/client";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type SearchParams = { role?: "partner" | "rider" };
+// FIX: added "vendor" as accepted value (signup passes role:"vendor" before mapping)
+type SearchParams = { role?: "partner" | "rider" | "vendor" };
 
 export const Route = createFileRoute("/pending-approval")({
   head: () => ({ meta: [{ title: "Pending Approval — EasyBlue" }] }),
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
-    role: search.role === "rider" || search.role === "partner" ? search.role : undefined,
+    role:
+      search.role === "rider" || search.role === "partner" || search.role === "vendor"
+        ? (search.role as SearchParams["role"])
+        : undefined,
   }),
   component: PendingApprovalPage,
 });

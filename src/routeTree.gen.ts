@@ -9,56 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VendorDashboardRouteImport } from './routes/vendor-dashboard'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as StocksRouteImport } from './routes/stocks'
-import { Route as StandardBookingRouteImport } from './routes/standard-booking'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as RiderDashboardRouteImport } from './routes/rider-dashboard'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
-import { Route as ParkWaybillRouteImport } from './routes/park-waybill'
-import { Route as MarketplaceCheckoutRouteImport } from './routes/marketplace-checkout'
-import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CallbackRouteImport } from './routes/callback'
-import { Route as AdminVendorsRouteImport } from './routes/admin-vendors'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
+import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathlessLayout/_nested-layout'
+import { Route as AuthenticatedVendorDashboardRouteImport } from './routes/_authenticated/vendor-dashboard'
+import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
+import { Route as AuthenticatedStandardBookingRouteImport } from './routes/_authenticated/standard-booking'
+import { Route as AuthenticatedRiderDashboardRouteImport } from './routes/_authenticated/rider-dashboard'
+import { Route as AuthenticatedParkWaybillRouteImport } from './routes/_authenticated/park-waybill'
+import { Route as AuthenticatedMarketplaceCheckoutRouteImport } from './routes/_authenticated/marketplace-checkout'
+import { Route as AuthenticatedMarketplaceRouteImport } from './routes/_authenticated/marketplace'
+import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAdminVendorsRouteImport } from './routes/_authenticated/admin-vendors'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
+import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
-const VendorDashboardRoute = VendorDashboardRouteImport.update({
-  id: '/vendor-dashboard',
-  path: '/vendor-dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StocksRoute = StocksRouteImport.update({
-  id: '/stocks',
-  path: '/stocks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StandardBookingRoute = StandardBookingRouteImport.update({
-  id: '/standard-booking',
-  path: '/standard-booking',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RiderDashboardRoute = RiderDashboardRouteImport.update({
-  id: '/rider-dashboard',
-  path: '/rider-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -71,29 +54,9 @@ const PendingApprovalRoute = PendingApprovalRouteImport.update({
   path: '/pending-approval',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ParkWaybillRoute = ParkWaybillRouteImport.update({
-  id: '/park-waybill',
-  path: '/park-waybill',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketplaceCheckoutRoute = MarketplaceCheckoutRouteImport.update({
-  id: '/marketplace-checkout',
-  path: '/marketplace-checkout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketplaceRoute = MarketplaceRouteImport.update({
-  id: '/marketplace',
-  path: '/marketplace',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -101,24 +64,9 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminVendorsRoute = AdminVendorsRouteImport.update({
-  id: '/admin-vendors',
-  path: '/admin-vendors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -135,177 +83,253 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PathlessLayoutNestedLayoutRoute =
+  PathlessLayoutNestedLayoutRouteImport.update({
+    id: '/_pathlessLayout/_nested-layout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedVendorDashboardRoute =
+  AuthenticatedVendorDashboardRouteImport.update({
+    id: '/vendor-dashboard',
+    path: '/vendor-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStocksRoute = AuthenticatedStocksRouteImport.update({
+  id: '/stocks',
+  path: '/stocks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStandardBookingRoute =
+  AuthenticatedStandardBookingRouteImport.update({
+    id: '/standard-booking',
+    path: '/standard-booking',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRiderDashboardRoute =
+  AuthenticatedRiderDashboardRouteImport.update({
+    id: '/rider-dashboard',
+    path: '/rider-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedParkWaybillRoute =
+  AuthenticatedParkWaybillRouteImport.update({
+    id: '/park-waybill',
+    path: '/park-waybill',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMarketplaceCheckoutRoute =
+  AuthenticatedMarketplaceCheckoutRouteImport.update({
+    id: '/marketplace-checkout',
+    path: '/marketplace-checkout',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMarketplaceRoute =
+  AuthenticatedMarketplaceRouteImport.update({
+    id: '/marketplace',
+    path: '/marketplace',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminVendorsRoute =
+  AuthenticatedAdminVendorsRouteImport.update({
+    id: '/admin-vendors',
+    path: '/admin-vendors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PathlessLayoutNestedLayoutRouteBRoute =
+  PathlessLayoutNestedLayoutRouteBRouteImport.update({
+    id: '/route-b',
+    path: '/route-b',
+    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
+  } as any)
+const PathlessLayoutNestedLayoutRouteARoute =
+  PathlessLayoutNestedLayoutRouteARouteImport.update({
+    id: '/route-a',
+    path: '/route-a',
+    getParentRoute: () => PathlessLayoutNestedLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
-  '/admin': typeof AdminRoute
-  '/admin-vendors': typeof AdminVendorsRoute
   '/callback': typeof CallbackRoute
-  '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/marketplace': typeof MarketplaceRoute
-  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
-  '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
-  '/rider-dashboard': typeof RiderDashboardRoute
   '/signup': typeof SignupRoute
-  '/standard-booking': typeof StandardBookingRoute
-  '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
-  '/vendor-dashboard': typeof VendorDashboardRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/admin-vendors': typeof AuthenticatedAdminVendorsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/history': typeof AuthenticatedHistoryRoute
+  '/marketplace': typeof AuthenticatedMarketplaceRoute
+  '/marketplace-checkout': typeof AuthenticatedMarketplaceCheckoutRoute
+  '/park-waybill': typeof AuthenticatedParkWaybillRoute
+  '/rider-dashboard': typeof AuthenticatedRiderDashboardRoute
+  '/standard-booking': typeof AuthenticatedStandardBookingRoute
+  '/stocks': typeof AuthenticatedStocksRoute
+  '/vendor-dashboard': typeof AuthenticatedVendorDashboardRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
 }
 export interface FileRoutesByTo {
-  '/admin': typeof AdminRoute
-  '/admin-vendors': typeof AdminVendorsRoute
   '/callback': typeof CallbackRoute
-  '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/marketplace': typeof MarketplaceRoute
-  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
-  '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
-  '/rider-dashboard': typeof RiderDashboardRoute
   '/signup': typeof SignupRoute
-  '/standard-booking': typeof StandardBookingRoute
-  '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
-  '/vendor-dashboard': typeof VendorDashboardRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/admin-vendors': typeof AuthenticatedAdminVendorsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/history': typeof AuthenticatedHistoryRoute
+  '/marketplace': typeof AuthenticatedMarketplaceRoute
+  '/marketplace-checkout': typeof AuthenticatedMarketplaceCheckoutRoute
+  '/park-waybill': typeof AuthenticatedParkWaybillRoute
+  '/rider-dashboard': typeof AuthenticatedRiderDashboardRoute
+  '/standard-booking': typeof AuthenticatedStandardBookingRoute
+  '/stocks': typeof AuthenticatedStocksRoute
+  '/vendor-dashboard': typeof AuthenticatedVendorDashboardRoute
   '/': typeof AuthenticatedIndexRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/admin': typeof AdminRoute
-  '/admin-vendors': typeof AdminVendorsRoute
   '/callback': typeof CallbackRoute
-  '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/marketplace': typeof MarketplaceRoute
-  '/marketplace-checkout': typeof MarketplaceCheckoutRoute
-  '/park-waybill': typeof ParkWaybillRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/privacy': typeof PrivacyRoute
-  '/rider-dashboard': typeof RiderDashboardRoute
   '/signup': typeof SignupRoute
-  '/standard-booking': typeof StandardBookingRoute
-  '/stocks': typeof StocksRoute
   '/terms': typeof TermsRoute
-  '/vendor-dashboard': typeof VendorDashboardRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin-vendors': typeof AuthenticatedAdminVendorsRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/history': typeof AuthenticatedHistoryRoute
+  '/_authenticated/marketplace': typeof AuthenticatedMarketplaceRoute
+  '/_authenticated/marketplace-checkout': typeof AuthenticatedMarketplaceCheckoutRoute
+  '/_authenticated/park-waybill': typeof AuthenticatedParkWaybillRoute
+  '/_authenticated/rider-dashboard': typeof AuthenticatedRiderDashboardRoute
+  '/_authenticated/standard-booking': typeof AuthenticatedStandardBookingRoute
+  '/_authenticated/stocks': typeof AuthenticatedStocksRoute
+  '/_authenticated/vendor-dashboard': typeof AuthenticatedVendorDashboardRoute
+  '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
+  '/_pathlessLayout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/callback'
+    | '/forgot-password'
+    | '/login'
+    | '/pending-approval'
+    | '/privacy'
+    | '/signup'
+    | '/terms'
     | '/admin'
     | '/admin-vendors'
-    | '/callback'
     | '/dashboard'
-    | '/forgot-password'
     | '/history'
-    | '/login'
     | '/marketplace'
     | '/marketplace-checkout'
     | '/park-waybill'
-    | '/pending-approval'
-    | '/privacy'
     | '/rider-dashboard'
-    | '/signup'
     | '/standard-booking'
     | '/stocks'
-    | '/terms'
     | '/vendor-dashboard'
     | '/auth/reset-password'
+    | '/route-a'
+    | '/route-b'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/callback'
+    | '/forgot-password'
+    | '/login'
+    | '/pending-approval'
+    | '/privacy'
+    | '/signup'
+    | '/terms'
     | '/admin'
     | '/admin-vendors'
-    | '/callback'
     | '/dashboard'
-    | '/forgot-password'
     | '/history'
-    | '/login'
     | '/marketplace'
     | '/marketplace-checkout'
     | '/park-waybill'
-    | '/pending-approval'
-    | '/privacy'
     | '/rider-dashboard'
-    | '/signup'
     | '/standard-booking'
     | '/stocks'
-    | '/terms'
     | '/vendor-dashboard'
-    | '/auth/reset-password'
     | '/'
+    | '/auth/reset-password'
+    | '/route-a'
+    | '/route-b'
   id:
     | '__root__'
     | '/_authenticated'
-    | '/admin'
-    | '/admin-vendors'
     | '/callback'
-    | '/dashboard'
     | '/forgot-password'
-    | '/history'
     | '/login'
-    | '/marketplace'
-    | '/marketplace-checkout'
-    | '/park-waybill'
     | '/pending-approval'
     | '/privacy'
-    | '/rider-dashboard'
     | '/signup'
-    | '/standard-booking'
-    | '/stocks'
     | '/terms'
-    | '/vendor-dashboard'
+    | '/_authenticated/admin'
+    | '/_authenticated/admin-vendors'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/history'
+    | '/_authenticated/marketplace'
+    | '/_authenticated/marketplace-checkout'
+    | '/_authenticated/park-waybill'
+    | '/_authenticated/rider-dashboard'
+    | '/_authenticated/standard-booking'
+    | '/_authenticated/stocks'
+    | '/_authenticated/vendor-dashboard'
+    | '/_pathlessLayout/_nested-layout'
     | '/auth/reset-password'
     | '/_authenticated/'
+    | '/_pathlessLayout/_nested-layout/route-a'
+    | '/_pathlessLayout/_nested-layout/route-b'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AdminRoute: typeof AdminRoute
-  AdminVendorsRoute: typeof AdminVendorsRoute
   CallbackRoute: typeof CallbackRoute
-  DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
-  MarketplaceRoute: typeof MarketplaceRoute
-  MarketplaceCheckoutRoute: typeof MarketplaceCheckoutRoute
-  ParkWaybillRoute: typeof ParkWaybillRoute
   PendingApprovalRoute: typeof PendingApprovalRoute
   PrivacyRoute: typeof PrivacyRoute
-  RiderDashboardRoute: typeof RiderDashboardRoute
   SignupRoute: typeof SignupRoute
-  StandardBookingRoute: typeof StandardBookingRoute
-  StocksRoute: typeof StocksRoute
   TermsRoute: typeof TermsRoute
-  VendorDashboardRoute: typeof VendorDashboardRoute
+  PathlessLayoutNestedLayoutRoute: typeof PathlessLayoutNestedLayoutRouteWithChildren
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/vendor-dashboard': {
-      id: '/vendor-dashboard'
-      path: '/vendor-dashboard'
-      fullPath: '/vendor-dashboard'
-      preLoaderRoute: typeof VendorDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -313,32 +337,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/stocks': {
-      id: '/stocks'
-      path: '/stocks'
-      fullPath: '/stocks'
-      preLoaderRoute: typeof StocksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/standard-booking': {
-      id: '/standard-booking'
-      path: '/standard-booking'
-      fullPath: '/standard-booking'
-      preLoaderRoute: typeof StandardBookingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rider-dashboard': {
-      id: '/rider-dashboard'
-      path: '/rider-dashboard'
-      fullPath: '/rider-dashboard'
-      preLoaderRoute: typeof RiderDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -355,39 +358,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PendingApprovalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/park-waybill': {
-      id: '/park-waybill'
-      path: '/park-waybill'
-      fullPath: '/park-waybill'
-      preLoaderRoute: typeof ParkWaybillRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketplace-checkout': {
-      id: '/marketplace-checkout'
-      path: '/marketplace-checkout'
-      fullPath: '/marketplace-checkout'
-      preLoaderRoute: typeof MarketplaceCheckoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketplace': {
-      id: '/marketplace'
-      path: '/marketplace'
-      fullPath: '/marketplace'
-      preLoaderRoute: typeof MarketplaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -397,32 +372,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/callback': {
       id: '/callback'
       path: '/callback'
       fullPath: '/callback'
       preLoaderRoute: typeof CallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin-vendors': {
-      id: '/admin-vendors'
-      path: '/admin-vendors'
-      fullPath: '/admin-vendors'
-      preLoaderRoute: typeof AdminVendorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -446,40 +400,168 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_pathlessLayout/_nested-layout': {
+      id: '/_pathlessLayout/_nested-layout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/vendor-dashboard': {
+      id: '/_authenticated/vendor-dashboard'
+      path: '/vendor-dashboard'
+      fullPath: '/vendor-dashboard'
+      preLoaderRoute: typeof AuthenticatedVendorDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/stocks': {
+      id: '/_authenticated/stocks'
+      path: '/stocks'
+      fullPath: '/stocks'
+      preLoaderRoute: typeof AuthenticatedStocksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/standard-booking': {
+      id: '/_authenticated/standard-booking'
+      path: '/standard-booking'
+      fullPath: '/standard-booking'
+      preLoaderRoute: typeof AuthenticatedStandardBookingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rider-dashboard': {
+      id: '/_authenticated/rider-dashboard'
+      path: '/rider-dashboard'
+      fullPath: '/rider-dashboard'
+      preLoaderRoute: typeof AuthenticatedRiderDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/park-waybill': {
+      id: '/_authenticated/park-waybill'
+      path: '/park-waybill'
+      fullPath: '/park-waybill'
+      preLoaderRoute: typeof AuthenticatedParkWaybillRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/marketplace-checkout': {
+      id: '/_authenticated/marketplace-checkout'
+      path: '/marketplace-checkout'
+      fullPath: '/marketplace-checkout'
+      preLoaderRoute: typeof AuthenticatedMarketplaceCheckoutRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/marketplace': {
+      id: '/_authenticated/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof AuthenticatedMarketplaceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin-vendors': {
+      id: '/_authenticated/admin-vendors'
+      path: '/admin-vendors'
+      fullPath: '/admin-vendors'
+      preLoaderRoute: typeof AuthenticatedAdminVendorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_pathlessLayout/_nested-layout/route-b': {
+      id: '/_pathlessLayout/_nested-layout/route-b'
+      path: '/route-b'
+      fullPath: '/route-b'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBRouteImport
+      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    }
+    '/_pathlessLayout/_nested-layout/route-a': {
+      id: '/_pathlessLayout/_nested-layout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
+      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminVendorsRoute: typeof AuthenticatedAdminVendorsRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
+  AuthenticatedMarketplaceRoute: typeof AuthenticatedMarketplaceRoute
+  AuthenticatedMarketplaceCheckoutRoute: typeof AuthenticatedMarketplaceCheckoutRoute
+  AuthenticatedParkWaybillRoute: typeof AuthenticatedParkWaybillRoute
+  AuthenticatedRiderDashboardRoute: typeof AuthenticatedRiderDashboardRoute
+  AuthenticatedStandardBookingRoute: typeof AuthenticatedStandardBookingRoute
+  AuthenticatedStocksRoute: typeof AuthenticatedStocksRoute
+  AuthenticatedVendorDashboardRoute: typeof AuthenticatedVendorDashboardRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminVendorsRoute: AuthenticatedAdminVendorsRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
+  AuthenticatedMarketplaceRoute: AuthenticatedMarketplaceRoute,
+  AuthenticatedMarketplaceCheckoutRoute: AuthenticatedMarketplaceCheckoutRoute,
+  AuthenticatedParkWaybillRoute: AuthenticatedParkWaybillRoute,
+  AuthenticatedRiderDashboardRoute: AuthenticatedRiderDashboardRoute,
+  AuthenticatedStandardBookingRoute: AuthenticatedStandardBookingRoute,
+  AuthenticatedStocksRoute: AuthenticatedStocksRoute,
+  AuthenticatedVendorDashboardRoute: AuthenticatedVendorDashboardRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PathlessLayoutNestedLayoutRouteChildren {
+  PathlessLayoutNestedLayoutRouteARoute: typeof PathlessLayoutNestedLayoutRouteARoute
+  PathlessLayoutNestedLayoutRouteBRoute: typeof PathlessLayoutNestedLayoutRouteBRoute
+}
+
+const PathlessLayoutNestedLayoutRouteChildren: PathlessLayoutNestedLayoutRouteChildren =
+  {
+    PathlessLayoutNestedLayoutRouteARoute:
+      PathlessLayoutNestedLayoutRouteARoute,
+    PathlessLayoutNestedLayoutRouteBRoute:
+      PathlessLayoutNestedLayoutRouteBRoute,
+  }
+
+const PathlessLayoutNestedLayoutRouteWithChildren =
+  PathlessLayoutNestedLayoutRoute._addFileChildren(
+    PathlessLayoutNestedLayoutRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AdminRoute: AdminRoute,
-  AdminVendorsRoute: AdminVendorsRoute,
   CallbackRoute: CallbackRoute,
-  DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
-  MarketplaceRoute: MarketplaceRoute,
-  MarketplaceCheckoutRoute: MarketplaceCheckoutRoute,
-  ParkWaybillRoute: ParkWaybillRoute,
   PendingApprovalRoute: PendingApprovalRoute,
   PrivacyRoute: PrivacyRoute,
-  RiderDashboardRoute: RiderDashboardRoute,
   SignupRoute: SignupRoute,
-  StandardBookingRoute: StandardBookingRoute,
-  StocksRoute: StocksRoute,
   TermsRoute: TermsRoute,
-  VendorDashboardRoute: VendorDashboardRoute,
+  PathlessLayoutNestedLayoutRoute: PathlessLayoutNestedLayoutRouteWithChildren,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport

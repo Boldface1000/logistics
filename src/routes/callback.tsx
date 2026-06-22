@@ -3,7 +3,25 @@ import { supabase } from "@/integrations/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/callback")({
-  beforeLoad: async ({ location }) => {
+  // SSR off: beforeLoad reads window.location.search directly, which throws on
+  // the server, and resolves the session via the browser-only Supabase client.
+  ssr: false,
+  beforeLoad: async () => {
+    // FIX: Exchange PKCE code for session before calling getSession.
+    // Supabase email confirmation links carry a ?code= param (PKCE flow).
+    // Without this exchange, getSession() always returns null.
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        console.error("Code exchange failed:", exchangeError.message);
+        toast.error("Confirmation failed", { description: exchangeError.message });
+        throw redirect({ to: "/login" });
+      }
+    }
+
     const {
       data: { session },
       error: sessionError,
@@ -16,7 +34,6 @@ export const Route = createFileRoute("/callback")({
     }
 
     if (session) {
-      // Use the unified profiles view created in Patch 001
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role, approval")
@@ -30,15 +47,14 @@ export const Route = createFileRoute("/callback")({
         throw redirect({ to: "/login" });
       }
 
-      // Handle account approval flows
       if (profile.approval === "pending" || profile.approval === "rejected") {
         throw redirect({
           to: "/pending-approval",
-          search: { role: profile.role } as any,
+          // FIX: map "vendor" role to "partner" for pending-approval search param
+          search: { role: profile.role === "vendor" ? "partner" : profile.role } as any,
         });
       }
 
-      // Routing distribution matrix based on user role
       if (profile.role === "admin") throw redirect({ to: "/admin" });
       if (profile.role === "vendor") throw redirect({ to: "/vendor-dashboard" });
       if (profile.role === "rider") throw redirect({ to: "/rider-dashboard" });

@@ -8,7 +8,7 @@ import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
 
-export const Route = createFileRoute("/marketplace-checkout")({
+export const Route = createFileRoute("/_authenticated/marketplace-checkout")({
   head: () => ({ meta: [{ title: "Marketplace Checkout — EasyBlue" }] }),
   component: MarketplaceCheckoutPage,
 });

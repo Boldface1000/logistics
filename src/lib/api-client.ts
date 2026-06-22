@@ -7,19 +7,12 @@ export const orderQueries = {
   /**
    * Fetches orders created by the current authenticated customer profile
    */
-  mine: () =>
+  mine: (userId?: string) =>
     queryOptions({
-      queryKey: [...orderQueries.all(), "mine"],
+      queryKey: [...orderQueries.all(), "mine", userId],
+      enabled: !!userId,
       queryFn: async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) throw new Error("No active user session found.");
-
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("user_id", session.user.id);
+        const { data, error } = await supabase.from("orders").select("*").eq("customer_id", userId);
 
         if (error) throw error;
         return data || [];

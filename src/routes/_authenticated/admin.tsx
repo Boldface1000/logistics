@@ -37,7 +37,7 @@ import { AdminQrShareDialog } from "@/components/admin/AdminQrShareDialog";
 import { supabase } from "@/integrations/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — EasyBlue" }] }),
   component: AdminPage,
 });
