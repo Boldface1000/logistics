@@ -1,13 +1,27 @@
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+/* eslint-disable prettier/prettier */
+
+import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import tailwindcss from "@tailwindcss/vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+import viteReact from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
-  tanstackStart: {
-    server: { entry: "server" },
-    serverFns: {
-      disableCsrfMiddlewareWarning: true,
-    },
-  },
-  nitro: true,
+  plugins: [
+    tsconfigPaths(),
+    tailwindcss(),
+    tanstackRouter(),
+    tanstackStart({
+      server: { entry: "server" },
+      serverFns: {
+        disableCsrfMiddlewareWarning: true,
+      },
+    }),
+    viteReact(),
+    nitro(),
+  ],
 
   // ── Pre-bundle heavy deps so the browser doesn't do it on first load ──
   optimizeDeps: {
@@ -18,17 +32,7 @@ export default defineConfig({
       "react",
       "react-dom",
     ],
-    force: false, // set true once to force a clean re-bundle, then revert
   },
-
-  // ── Warm up the most-visited routes so HMR is instant ──
-  server: {
-    warmup: {
-      clientFiles: ["./src/main.tsx", "./src/routes/__root.tsx", "./src/routes/index.tsx"],
-    },
-  },
-
-  // ── Faster builds ──
   esbuild: {
     target: "esnext",
     logOverride: { "this-is-undefined-in-esm": "silent" },

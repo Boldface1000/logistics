@@ -8,7 +8,6 @@
     "types": ["vite/client"],
 
     /* Path Resolutions */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },

@@ -1,15 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "easyblue-logistics",
-  "compatibility_date": "2025-09-24",
+  "name": "easybluelogistics",
+  "compatibility_date": "2024-11-01",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "src/server.ts"
-}
-{
+  "pages_build_output_dir": ".output/public",
   "observability": {
     "logs": {
-      "enabled": false,
-      "invocation_logs": true
-    }
-  }
+      "enabled": true,
+    },
+  },
 }
