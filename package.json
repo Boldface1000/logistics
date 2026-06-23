@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node node_modules/vite/bin/vite.js dev",
-    "build": "node node_modules/vite/bin/vite.js build",
-    "build:dev": "vite build --mode development",
+    "build": "npx cross-env NITRO_PRESET=cloudflare-pages node node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",

@@ -22,11 +22,12 @@ export const Route = createFileRoute("/login")({
     if (session) {
       const { data: profile } = await supabase
         .from("users")
-        .select("role")
+        .select("role, approval")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
+        if (profile.approval === "pending") return;
         if (profile.role === "admin") throw redirect({ to: "/admin" });
         if (profile.role === "vendor") throw redirect({ to: "/vendor-dashboard" });
         if (profile.role === "rider") throw redirect({ to: "/rider-dashboard" });
@@ -76,9 +77,19 @@ function LoginPage() {
         .from("users")
         .select("first_name, role, approval")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
+
+      // Handle cases where database record hasn't been provisioned yet
+      if (!profile) {
+        toast.error("Profile Not Found", {
+          description:
+            "Your authentication is valid, but your user record is missing. Please cntact support.",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
 
       // Handle account approval flows
       if (profile.approval === "pending") {

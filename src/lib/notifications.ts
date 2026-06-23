@@ -1,23 +1,25 @@
-// /**
-//  * Notification infrastructure — isomorphic wrapper.
-//  *
-//  * Production path: Firebase Cloud Messaging via HTTP v1 API.
-//  * Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
-//  * When all three are present, sendPush() POSTs to FCM.
-//  *
-//  * Development / missing-creds path: silent fallback to console.log so
-//  * the critical app path never breaks while credentials are being provisioned.
-//  *
-//  * This module is browser-safe (no top-level FCM imports). The actual FCM
-//  * call lives inside a dynamic import gated by typeof process !== "undefined",
-//  * so it never ends up in the client bundle.
-//  */
+/**
+ * Notification infrastructure — isomorphic wrapper.
+ *
+ * Production path: Firebase Cloud Messaging via HTTP v1 API.
+ * Requires server env: FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
+ * When all three are present, sendPush() POSTs to FCM.
+ *
+ * Development / missing-creds path: silent fallback to console.log so
+ * the critical app path never breaks while credentials are being provisioned.
+ *
+ * This module is browser-safe (no top-level FCM imports). The actual FCM
+ * call lives inside a dynamic import gated by typeof process !== "undefined",
+ * so it never ends up in the client bundle.
+ */
 
 export type NotificationKind =
-  | "signup.new" // super-admin alert
-  | "order.assigned" // rider alert
-  | "payment.confirmed" // rider alert (after super-admin approves transfer)
-  | "delivery.completed"; // customer alert
+  | "signup.new"         // super-admin alert — new user awaiting approval
+  | "order.placed"       // admin alert — customer placed a new delivery order
+  | "order.assigned"     // rider alert — order assigned to them by admin
+  | "order.accepted"     // admin alert — rider accepted the dispatched order
+  | "order.delivered"    // admin + customer alert — delivery marked successful
+  | "payment.confirmed"; // rider alert — super-admin approved payment transfer
 
 export interface NotificationPayload {
   kind: NotificationKind;
@@ -26,9 +28,74 @@ export interface NotificationPayload {
   data?: Record<string, string>;
   /** Per-user targeting (uses push_subscriptions tokens) */
   userIds?: string[];
-  /** Topic targeting (e.g. "admin-signups") */
+  /** Topic targeting (e.g. "admin-alerts") */
   topic?: string;
 }
+
+// ─── Admin topic constant ────────────────────────────────────────────────────
+/**
+ * All admin devices subscribe to this FCM topic so a single sendPush() call
+ * reaches every logged-in admin without enumerating individual tokens.
+ *
+ * Subscribe on the client with:
+ *   messaging.subscribeToTopic(token, ADMIN_FCM_TOPIC)
+ * or via the FCM HTTP v1 batch-subscribe endpoint.
+ */
+export const ADMIN_FCM_TOPIC = "admin-alerts";
+
+// ─── Convenience helpers ─────────────────────────────────────────────────────
+
+/**
+ * Fire a push notification to ALL admin devices (via the shared topic).
+ * Safe to call from any server function / API route.
+ */
+export async function notifyAdmin(
+  kind: NotificationKind,
+  title: string,
+  body: string,
+  data?: Record<string, string>,
+) {
+  return sendPush({ kind, title, body, data, topic: ADMIN_FCM_TOPIC });
+}
+
+/**
+ * Emit the four key order-lifecycle admin alerts.
+ */
+export const orderNotifications = {
+  placed: (orderId: string, description: string) =>
+    notifyAdmin(
+      "order.placed",
+      "📦 New Delivery Order",
+      `Order ${orderId}: ${description} is awaiting dispatch.`,
+      { orderId, event: "placed" },
+    ),
+
+  assigned: (orderId: string, riderName: string) =>
+    notifyAdmin(
+      "order.assigned",
+      "🚴 Order Assigned",
+      `Order ${orderId} has been dispatched to ${riderName}.`,
+      { orderId, event: "assigned", riderName },
+    ),
+
+  accepted: (orderId: string, riderName: string) =>
+    notifyAdmin(
+      "order.accepted",
+      "✅ Rider Accepted Order",
+      `${riderName} accepted order ${orderId} and is en route.`,
+      { orderId, event: "accepted", riderName },
+    ),
+
+  delivered: (orderId: string) =>
+    notifyAdmin(
+      "order.delivered",
+      "🎉 Delivery Successful",
+      `Order ${orderId} has been delivered successfully.`,
+      { orderId, event: "delivered" },
+    ),
+};
+
+// ─── Core FCM infrastructure ─────────────────────────────────────────────────
 
 interface FcmCreds {
   projectId: string;
@@ -59,10 +126,10 @@ async function getAccessToken(creds: FcmCreds): Promise<string> {
     iat: now,
     exp: now + 3600,
   };
-  const b64 = (s: string) => btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const b64 = (s: string) =>
+    btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
   const unsigned = `${b64(JSON.stringify(header))}.${b64(JSON.stringify(claim))}`;
 
-  // Import the RSA private key (PKCS#8 PEM → CryptoKey)
   const pem = creds.privateKey
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
@@ -139,10 +206,8 @@ export async function sendPush(
 
   if (!creds) {
     if (isProd) {
-      // In production, remain silent and securely mask the missing credentials configuration context.
       return { delivered: 0, mode: "disabled" };
     }
-
     console.log("[notifications:log]", payload.kind, payload.title, payload.body, {
       userIds: payload.userIds?.length ?? 0,
       topic: payload.topic ?? null,
@@ -170,7 +235,6 @@ export async function sendPush(
           await postFcm(creds, accessToken, { token: row.token }, payload);
           delivered += 1;
         } catch (err) {
-          // Keep error reporting completely clean and non-verbose in production
           if (isProd) {
             console.warn("[notifications] Transmission dropped for targeted subscription token.");
           } else {
