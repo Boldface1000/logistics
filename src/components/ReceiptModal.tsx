@@ -3,10 +3,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Download, Share2, Printer, X } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
-import type { OrderRecord } from "@/lib/orders-store";
+import type { Tables } from "@/types/database.types";
+
+type Order = Tables<"orders">;
 
 interface Props {
-  order: OrderRecord | null;
+  order: Order | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userType?: string;
@@ -18,47 +20,41 @@ export function ReceiptModal({ order, open, onOpenChange, userType }: Props) {
 
   if (!order) return null;
 
-  const d = new Date(order.createdAt);
+  const d = new Date(order.created_at);
   const date = d.toLocaleDateString();
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const amount = order.priceCents != null ? `$${(order.priceCents / 100).toFixed(2)}` : "—";
+  const amount = order.total_cents != null ? `$${(order.total_cents / 100).toFixed(2)}` : "—";
 
   const lines: Array<[string, string]> = [
     ["Receipt No.", order.id],
     ["Date", date],
     ["Time", time],
-    ["Order Type", order.type.toUpperCase()],
     ["Status", order.status.replace("_", " ").toUpperCase()],
-
-    ["Customer", `${order.customerFirstName} ${order.customerLastName}`],
-    ["Phone", order.customerPhone || "—"],
-    ["Email", order.customerEmail],
     ["User Type", (userType ?? "customer").toUpperCase()],
-    ["Rider", order.assignedRiderName ?? "Unassigned"],
 
-    ["Sender Name", order.senderName],
-    ["Sender Location", order.senderLocation],
-    ["Sender Phone", order.senderPhone],
+    ["Sender Name", order.sender_name ?? "—"],
+    ["Sender Location", order.sender_location ?? "—"],
+    ["Sender Phone", order.sender_phone ?? "—"],
 
-    ["Receiver Name", order.receiverName],
-    ["Receiver Location", order.receiverLocation],
-    ["Receiver Phone", order.receiverPhone],
+    ["Receiver Name", order.receiver_name ?? "—"],
+    ["Receiver Location", order.receiver_location ?? "—"],
+    ["Receiver Phone", order.receiver_phone ?? "—"],
 
-    ["Payment Mode", order.paymentMode.toUpperCase()],
+    ["Payment Mode", order.payment_mode.toUpperCase()],
 
-    ["Park Name", order.waybillFields?.parkName ?? "—"],
-    ["Contact Number", order.waybillFields?.contactNumber ?? "—"],
-    ["Driver/ Storekeeper No.", order.waybillFields?.driverOrStorekeeperNumber ?? "—"],
-    ["Name on Parcel", order.waybillFields?.nameOnParcel ?? "—"],
-    ["Phone on Parcel", order.waybillFields?.phoneNumberOnParcel ?? "—"],
-    ["Waybill (opt)", order.waybillFields?.waybill ?? "—"],
-    ["Delivery Code (opt)", order.waybillFields?.deliveryCode ?? "—"],
-    ["Content of Item", order.waybillFields?.contentOfItem ?? order.itemDescription],
-    ["Amount to be Paid", order.waybillFields?.amountToBePaid ?? amount],
-    ["Drop-off Point", order.waybillFields?.dropOffPoint ?? order.receiverLocation],
-    ["Drop-off Number", order.waybillFields?.dropOffNumber ?? order.receiverPhone],
+    ["Park Name", order.park_name ?? "—"],
+    ["Contact Number", order.contact_number ?? "—"],
+    ["Driver/ Storekeeper No.", order.driver_or_storekeeper_number ?? "—"],
+    ["Name on Parcel", order.name_on_parcel ?? "—"],
+    ["Phone on Parcel", order.phone_number_on_parcel ?? "—"],
+    ["Waybill (opt)", order.waybill ?? "—"],
+    ["Delivery Code (opt)", order.delivery_code ?? "—"],
+    ["Content of Item", order.content_of_item ?? order.item_description],
+    ["Amount to be Paid", order.amount_to_be_paid ?? amount],
+    ["Drop-off Point", order.drop_off_point ?? order.receiver_location ?? "—"],
+    ["Drop-off Number", order.drop_off_number ?? order.receiver_phone ?? "—"],
 
-    ["Item", order.itemDescription],
+    ["Item", order.item_description],
     ["Amount", amount],
   ];
 

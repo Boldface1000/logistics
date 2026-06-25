@@ -3,7 +3,7 @@ import { ArrowLeft, FileText } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 
 export const Route = createFileRoute("/terms")({
-  head: () => ({ meta: [{ title: "Terms of Use — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Terms of Use — EasyBlue Logistics" }] }),
   component: TermsPage,
 });
 

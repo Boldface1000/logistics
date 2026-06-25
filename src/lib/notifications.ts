@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /**
  * Notification infrastructure — isomorphic wrapper.
  *
@@ -14,11 +15,11 @@
  */
 
 export type NotificationKind =
-  | "signup.new"         // super-admin alert — new user awaiting approval
-  | "order.placed"       // admin alert — customer placed a new delivery order
-  | "order.assigned"     // rider alert — order assigned to them by admin
-  | "order.accepted"     // admin alert — rider accepted the dispatched order
-  | "order.delivered"    // admin + customer alert — delivery marked successful
+  | "signup.new" // super-admin alert — new user awaiting approval
+  | "order.placed" // admin alert — customer placed a new delivery order
+  | "order.assigned" // rider alert — order assigned to them by admin
+  | "order.accepted" // admin alert — rider accepted the dispatched order
+  | "order.delivered" // admin + customer alert — delivery marked successful
   | "payment.confirmed"; // rider alert — super-admin approved payment transfer
 
 export interface NotificationPayload {
@@ -126,8 +127,7 @@ async function getAccessToken(creds: FcmCreds): Promise<string> {
     iat: now,
     exp: now + 3600,
   };
-  const b64 = (s: string) =>
-    btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const b64 = (s: string) => btoa(s).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
   const unsigned = `${b64(JSON.stringify(header))}.${b64(JSON.stringify(claim))}`;
 
   const pem = creds.privateKey

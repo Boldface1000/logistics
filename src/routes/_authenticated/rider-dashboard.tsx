@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,9 +26,10 @@ import { ProfileHeader } from "@/components/ProfileHeader";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { useTheme } from "@/components/ThemeProvider";
 import { supabase } from "@/integrations/client";
+import { AuthUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/rider-dashboard")({
-  head: () => ({ meta: [{ title: "Rider Dashboard — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Rider Dashboard — EasyBlue Logistics" }] }),
   component: RiderDashboard,
 });
 
@@ -106,7 +109,7 @@ function RiderDashboard() {
 
   // Security guard walls
   if (!sessionData) {
-    navigate({ to: "/auth" });
+    navigate({ to: "/login" });
     return null;
   }
 
@@ -342,13 +345,19 @@ function Empty({ label }: { label: string }) {
 
 function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }) {
   const { theme, toggle } = useTheme();
+  const profileUser: AuthUser | null = user
+    ? {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role ?? "rider",
+        approval: user.approval ?? "pending",
+      }
+    : null;
   return (
     <div>
-      <ProfileHeader
-        user={
-          user ? { firstName: user.first_name, lastName: user.last_name, email: user.email } : null
-        }
-      />
+      <ProfileHeader user={profileUser} />
       <button
         onClick={toggle}
         className="w-full p-4 rounded-2xl bg-card border border-border flex items-center gap-3 mb-3 active:scale-[0.99]"
@@ -367,7 +376,7 @@ function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }
         className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm border border-destructive/10"
         type="button"
       >
-        <LogOut className="h-5 w-5" /> Terminate Terminal Session
+        <LogOut className="h-5 w-5" /> Logout
       </button>
     </div>
   );

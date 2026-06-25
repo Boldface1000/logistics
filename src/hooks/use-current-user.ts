@@ -39,7 +39,7 @@ export function useCurrentUser() {
       const [rolesRes, profileRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id),
         supabase
-          .from("profiles")
+          .from("users")
           .select("display_name, email, profile_photo_url")
           .eq("id", user.id)
           .maybeSingle(),

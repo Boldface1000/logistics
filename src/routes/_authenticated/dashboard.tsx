@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -25,10 +26,10 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { orderQueries } from "@/lib/api-client";
 import { supabase } from "@/integrations/client";
-import type { Order } from "@/types/database.types";
+import type { Order } from "@/types/index.ts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — EasyBlue Logistics" }] }),
   component: () => <CustomerDashboard variant="customer" />,
 });
 
@@ -67,12 +68,13 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
   if (loading || !userId) {
     return (
       <MobileShell>
-        <PageLoader label={variant === "vendor" ? "Verifying Credentials" : "Loading Workspace"} />
+        <PageLoader label={variant === "vendor" ? "Hold On..." : "This won't take long"} />
       </MobileShell>
     );
   }
 
-  const displayName = userProfile?.first_name ?? (variant === "vendor" ? "Partner Node" : "Guest");
+  const displayName =
+    userProfile?.first_name ?? (variant === "vendor" ? "Business Account" : "User");
 
   const openTracking = (id: string) => {
     setActiveOrderId(id);
@@ -170,14 +172,14 @@ function HomeHero({
     },
     {
       header: "Inter-State",
-      subheader: "Import/Export",
+      subheader: "Book Local Delivery",
       to: "/standard-booking",
       icon: <Truck className="h-5 w-5" />,
       accentVar: "zinc",
     },
     {
       header: "Park Waybill",
-      subheader: "Inter-park parcel transit",
+      subheader: "Book Waybill",
       to: "/park-waybill",
       icon: <Truck className="h-5 w-5" />,
       accentVar: "cyan",
@@ -226,10 +228,6 @@ function HomeHero({
               onClick={() => onGo(b.to)}
             />
           ))}
-        </div>
-
-        <div className="pt-3 text-[11px] text-muted-foreground">
-          Note: Intra-State and Inter-State use the same form parameters.
         </div>
 
         <div className="pt-5">
@@ -485,8 +483,8 @@ function TrackingPanel({
       </div>
 
       <div className="rounded-2xl bg-card border border-border p-4 space-y-2.5 text-xs">
-        <Row label="Pickup Address" value={active.pickup_address || "Terminal Office Address"} />
-        <Row label="Drop-off Destination" value={active.dropoff_address || "N/A"} />
+        <Row label="Pickup Address" value={active.sender_location || "Terminal Office Address"} />
+        <Row label="Drop-off Destination" value={active.receiver_location || "N/A"} />
         <Row
           label="Assigned Courier Rider"
           value={
@@ -520,7 +518,16 @@ function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }
 
       <ProfileHeader
         user={
-          user ? { firstName: user.first_name, lastName: user.last_name, email: user.email } : null
+          user
+            ? {
+                id: user.id,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                email: user.email,
+                role: user.role ?? "customer",
+                approval: user.approval ?? "pending",
+              }
+            : null
         }
       />
 
@@ -560,7 +567,7 @@ function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }
           type="button"
         >
           <LogOut className="h-5 w-5" />
-          Terminate Terminal Session
+          Logout
         </button>
       </div>
     </div>

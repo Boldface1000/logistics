@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ function AdminVendorsPage() {
           business_phone,
           rating,
           user_id,
-          profiles:user_id (
+          owner:users!user_id (
             email,
             first_name,
             last_name
@@ -86,7 +87,7 @@ function AdminVendorsPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Logistics Management</h1>
+            <h1 className="text-xl font-bold text-foreground">Operations</h1>
             <p className="text-xs text-muted-foreground">Approved network vendors & inventory</p>
           </div>
         </div>
@@ -94,11 +95,11 @@ function AdminVendorsPage() {
         <div className="flex flex-col gap-3">
           {approvedVendors.length === 0 ? (
             <div className="p-8 text-center bg-card rounded-2xl border border-dashed border-border text-muted-foreground text-sm">
-              No approved vendors found in database.
+              No approved vendors found yet.
             </div>
           ) : (
             approvedVendors.map((vendor) => {
-              const owner = vendor.profiles;
+              const owner = vendor.owner;
 
               return (
                 <div
@@ -407,7 +408,7 @@ function StockSubForm({
             type="text"
             value={productType}
             onChange={(e) => setProductType(e.target.value)}
-            placeholder="e.g. Premium Motor Engine Hub"
+            placeholder="e.g. Vendor stock"
             className="mt-1 w-full h-11 px-3 rounded-xl bg-input border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>

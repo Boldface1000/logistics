@@ -43,7 +43,7 @@ export const auth = {
 
       // Fetch user profile from profiles table
       const { data: profile, error: profileError } = await supabase
-        .from("profiles")
+        .from("users")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
@@ -54,9 +54,9 @@ export const auth = {
 
       // Fetch user roles
       const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
+        .from("users")
         .select("role")
-        .eq("user_id", user.id);
+        .eq("id", user.id);
 
       if (rolesError && import.meta.env.DEV) {
         console.error("Failed to fetch user roles:", rolesError.message);
@@ -72,7 +72,7 @@ export const auth = {
         lastName: profile?.last_name ?? "",
         role: primaryRole,
         approval: profile?.approval ?? "pending",
-        profilePhotoUrl: profile?.profile_photo_url,
+        profilePhotoUrl: profile?.profile_photo_url ?? undefined,
       };
     } catch (error) {
       if (import.meta.env.DEV) {

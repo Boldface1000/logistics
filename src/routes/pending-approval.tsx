@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/client";
 import { useState } from "react";
 import { toast } from "sonner";
 
-// FIX: added "vendor" as accepted value (signup passes role:"vendor" before mapping)
 type SearchParams = { role?: "partner" | "rider" | "vendor" };
 
 export const Route = createFileRoute("/pending-approval")({
@@ -42,8 +41,9 @@ function PendingApprovalPage() {
   // 2. Branch DB logic conditionally based on user role to determine approval state
   const { data: profileRecord, isLoading: profileLoading } = useQuery({
     queryKey: ["pending-profile-record", userId, role],
-    enabled: !!userId,
+    enabled: !!userId && !!role,
     queryFn: async () => {
+      if (!userId || !role) return null;
       if (role === "rider") {
         const { data, error } = await supabase
           .from("riders")

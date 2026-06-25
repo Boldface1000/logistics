@@ -4,12 +4,12 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "node node_modules/vite/bin/vite.js dev",
-    "build": "npx cross-env NITRO_PRESET=cloudflare-pages node node_modules/vite/bin/vite.js build",
+    "dev": "vite dev",
+    "build": "cross-env NITRO_PRESET=cloudflare-pages vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "deploy:cloudflare": "npm run build && npx wrangler pages deploy dist --project-name=easybluelogistics"
+    "deploy:cloudflare": "npm run build && wrangler pages deploy --project-name=easybluelogistics"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
@@ -72,15 +72,15 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "@tanstack/react-router": "^1.168.25",
     "@tanstack/react-start": "^1.167.50",
-    "@eslint/js": "^9.32.0",
-    "@vite-tanstack-config": "2.3.1",
     "@types/node": "^22.16.5",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "cross-env": "^7.0.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

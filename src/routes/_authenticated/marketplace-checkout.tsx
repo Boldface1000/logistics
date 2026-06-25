@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable prettier/prettier */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ShoppingBag, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +19,11 @@ function MarketplaceCheckoutPage() {
   const artificialLoading = useArtificialLoading(450);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    auth.current().then((u) => setRole(u?.role ?? null));
+  }, []);
 
   // State Management for Purchase Flow
   const [selectedStockId, setSelectedStockId] = useState("");
@@ -38,6 +45,7 @@ function MarketplaceCheckoutPage() {
           vendor_id,
           product_type,
           quantity,
+          price_cents,
           vendors (
             registered_business_name,
             business_phone
@@ -48,17 +56,17 @@ function MarketplaceCheckoutPage() {
     },
   });
 
-  // Calculate pricing baselines (Assuming a flat rate of 5,000 NGN or 500000 cents per structural delivery item)
-  const UNIT_PRICE_CENTS = 500000;
-  const totalCents = quantity * UNIT_PRICE_CENTS;
-
   // Find currently selected stock item record details
   const selectedStockItem = availableStocks.find((s) => s.id === selectedStockId);
+
+  // Real per-unit price, sourced from the vendor's own stock record
+  const unitPriceCents = selectedStockItem?.price_cents ?? 0;
+  const totalCents = quantity * unitPriceCents;
 
   // 2. Transactional Mutation for Order Placement
   const checkoutMutation = useMutation({
     mutationFn: async () => {
-      const user = auth.current();
+      const user = await auth.current();
       if (!user) throw new Error("Authentication required. Please sign back in.");
       if (!selectedStockItem)
         throw new Error("Please select a product from the marketplace options.");
@@ -88,7 +96,7 @@ function MarketplaceCheckoutPage() {
         description: `Order ${orderId?.slice(0, 8)} secured and inventory deducted successfully.`,
       });
       queryClient.invalidateQueries({ queryKey: ["marketplace-stocks"] });
-      navigate({ to: backTarget() });
+      navigate({ to: backTarget(role) });
     },
     onError: (err: any) => {
       console.error("Atomic transaction processing exception:", err);
@@ -127,7 +135,7 @@ function MarketplaceCheckoutPage() {
     <MobileShell>
       <header className="safe-top px-5 pb-3 flex items-center gap-3 border-b border-border">
         <Link
-          to={backTarget()}
+          to={backTarget(role)}
           className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -169,7 +177,7 @@ function MarketplaceCheckoutPage() {
               <div className="text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground">Stock Check:</span> Each unit costs{" "}
                 <span className="font-semibold text-foreground">
-                  ₦{(UNIT_PRICE_CENTS / 100).toLocaleString()}
+                  ₦{(unitPriceCents / 100).toLocaleString()}
                 </span>
                 . Maximum safe deduction ceiling for this item is currently{" "}
                 {selectedStockItem.quantity} units.
@@ -274,7 +282,6 @@ function Field({
   );
 }
 
-function backTarget(): "/dashboard" | "/vendor-dashboard" {
-  const u = auth.current();
-  return u?.role === "vendor" ? "/vendor-dashboard" : "/dashboard";
+function backTarget(role: string | null): "/dashboard" | "/vendor-dashboard" {
+  return role === "vendor" ? "/vendor-dashboard" : "/dashboard";
 }

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Bus, ArrowRight, Map as MapIcon } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
@@ -15,6 +16,10 @@ export const Route = createFileRoute("/_authenticated/park-waybill")({
 function ParkWaybillPage() {
   const loading = useArtificialLoading(450);
   const navigate = useNavigate();
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    auth.current().then((u) => setRole(u?.role ?? null));
+  }, []);
   const [parkName, setParkName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [driverOrStorekeeperNumber, setDriverOrStorekeeperNumber] = useState("");
@@ -39,7 +44,7 @@ function ParkWaybillPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = auth.current();
+    const user = await auth.current();
     if (!user) {
       toast.error("Please sign in");
       navigate({ to: "/login" });
@@ -91,13 +96,13 @@ function ParkWaybillPage() {
       if (error) throw error;
 
       toast.success("Waybill booked", {
-        description: `Reference ${orderId} — assigning a park rider.`,
+        description: `Reference ${orderId} — assigning a rider.`,
       });
-      navigate({ to: backTarget() });
+      navigate({ to: backTarget(role) });
     } catch (err: any) {
-      console.error("Database Waybill Persistence Error:", err);
+      console.error("Waybill Persistence Error:", err);
       toast.error("Failed to book waybill", {
-        description: err.message || "An unexpected database exception occurred.",
+        description: err.message || "An unexpected error occurred.",
       });
     } finally {
       setSubmitting(false);
@@ -108,7 +113,7 @@ function ParkWaybillPage() {
     <MobileShell>
       <header className="safe-top px-5 pb-3 flex items-center gap-3 border-b border-border">
         <Link
-          to={backTarget()}
+          to={backTarget(role)}
           className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -126,19 +131,19 @@ function ParkWaybillPage() {
             label="Park name"
             value={parkName}
             onChange={setParkName}
-            placeholder="e.g. Jibowu Park"
+            placeholder="e.g. Abuja Park"
           />
           <Field
             label="Contact number"
             value={contactNumber}
             onChange={setContactNumber}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
           <Field
             label="Driver's/ storekeeper's number"
             value={driverOrStorekeeperNumber}
             onChange={setDriverOrStorekeeperNumber}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
           <Field
             label="Name on parcel"
@@ -150,10 +155,10 @@ function ParkWaybillPage() {
             label="Phone number on parcel"
             value={phoneNumberOnParcel}
             onChange={setPhoneNumberOnParcel}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
           <Field
-            label="Waybill (optional)"
+            label="Waybill ID(optional)"
             value={waybill}
             onChange={setWaybill}
             placeholder="Reference (if any)"
@@ -175,7 +180,7 @@ function ParkWaybillPage() {
             label="Amount to be paid"
             value={amountToBePaid}
             onChange={setAmountToBePaid}
-            placeholder="e.g. 150000"
+            placeholder="e.g. 150,000"
           />
           <Field
             label="Receiver's name"
@@ -187,13 +192,13 @@ function ParkWaybillPage() {
             label="Drop-off point"
             value={dropOffPoint}
             onChange={setDropOffPoint}
-            placeholder="e.g. Upper Iweka, Onitsha"
+            placeholder="e.g. DELSU, Abraka"
           />
           <Field
             label="Drop-off number"
             value={dropOffNumber}
             onChange={setDropOffNumber}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
 
           <button
@@ -202,7 +207,7 @@ function ParkWaybillPage() {
             className="mt-2 h-12 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
-              "Booking…"
+              "Booking your Order…"
             ) : (
               <>
                 Book Waybill <ArrowRight className="h-4 w-4" /> <MapIcon className="h-4 w-4" />
@@ -251,7 +256,6 @@ function Field({
   );
 }
 
-function backTarget(): "/dashboard" | "/vendor-dashboard" {
-  const u = auth.current();
-  return u?.role === "vendor" ? "/vendor-dashboard" : "/dashboard";
+function backTarget(role: string | null): "/dashboard" | "/vendor-dashboard" {
+  return role === "vendor" ? "/vendor-dashboard" : "/dashboard";
 }

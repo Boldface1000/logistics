@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 
 export const Route = createFileRoute("/privacy")({
-  head: () => ({ meta: [{ title: "Privacy & Security — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Privacy & Security — EasyBlue Logistics " }] }),
   component: PrivacyPage,
 });
 

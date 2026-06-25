@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Mail, Loader2 } from "lucide-react";
@@ -141,12 +142,14 @@ function ForgotPasswordPage() {
               Check your email
             </h2>
             <p className="text-sm text-muted-foreground text-center mb-8 max-w-xs">
-              We've sent a password reset link to <span className="font-semibold">{email}</span>. Click the link in your email to reset your password.
+              We've sent a password reset link to <span className="font-semibold">{email}</span>.
+              Click the link in your email to reset your password.
             </p>
 
             <div className="w-full max-w-sm bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
               <p className="text-xs text-blue-900">
-                <strong>Tip:</strong> Check your spam or junk folder if you don't see the email within a few minutes.
+                <strong>Tip:</strong> Check your spam or junk folder if you don't see the email
+                within a few minutes.
               </p>
             </div>
 

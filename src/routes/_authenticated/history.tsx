@@ -1,25 +1,21 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { ArrowLeft, Calendar as CalendarIcon, FileText, Printer, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { ReceiptModal } from "@/components/ReceiptModal";
-import { auth, type AuthUser } from "@/lib/auth";
-import { ordersStore, type OrderRecord } from "@/lib/orders-store";
-import { ridersStore } from "@/lib/riders-store";
+import { orderQueries } from "@/lib/api-client";
+import type { Tables } from "@/types/database.types";
+
+type Order = Tables<"orders">;
 
 export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({ meta: [{ title: "Transaction History — EasyBlue" }] }),
   component: HistoryPage,
 });
-
-function useOrders() {
-  return useSyncExternalStore(
-    (cb) => ordersStore.subscribe(cb),
-    () => JSON.stringify(ordersStore.list()),
-    () => "[]",
-  );
-}
 
 function todayISO(offsetDays = 0) {
   const d = new Date();
@@ -30,49 +26,53 @@ function todayISO(offsetDays = 0) {
 function HistoryPage() {
   const loading = useArtificialLoading(400);
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [from, setFrom] = useState<string>(todayISO(-30));
   const [to, setTo] = useState<string>(todayISO(0));
   const [applied, setApplied] = useState<{ from: string; to: string } | null>(null);
-  useOrders();
 
-  useEffect(() => {
-    setUser(auth.current());
-  }, []);
+  // Pull auth context from the authenticated layout — same pattern as dashboard.tsx
+  const context = Route.useRouteContext() as any;
+  const userId: string | undefined = context?.auth?.userId;
+  const role: string = context?.auth?.role ?? "customer";
 
-  const allOrders = ordersStore.list();
+  // Fetch orders from Supabase via the existing query helpers
+  const { data: myOrders = [], isLoading: loadingMine } = useQuery(
+    orderQueries.mine(role === "customer" || role === "vendor" ? userId : undefined),
+  );
+  const { data: riderOrders = [], isLoading: loadingRider } = useQuery(
+    orderQueries.byRider(role === "rider" ? userId : undefined),
+  );
 
-  /** Per-role transaction scope. */
-  const scoped: OrderRecord[] = useMemo(() => {
-    if (!user) return [];
-    if (user.role === "customer") return ordersStore.byCustomer(user.email);
-    if (user.role === "rider") {
-      const r = ridersStore.findByEmail(user.email);
-      return r ? ordersStore.byRider(r.id) : [];
-    }
-    if (user.role === "vendor") {
-      // For the demo, vendor sees marketplace orders from all customers.
-      return allOrders.filter((o) => o.type === "marketplace");
-    }
-    // admin (any scope) sees everything
-    return allOrders;
-  }, [user, allOrders]);
+  /** Per-role transaction scope (mirrors old ordersStore scoping). */
+  const scoped: Order[] = useMemo(() => {
+    if (role === "customer") return myOrders;
+    if (role === "rider") return riderOrders;
+    if (role === "vendor") return myOrders.filter((o: Order) => o.payment_method === "marketplace");
+    // admin sees everything — use mine() with no filter; admin queries handled server-side via RLS
+    return myOrders;
+  }, [role, myOrders, riderOrders]);
 
   const filtered = useMemo(() => {
     if (!applied) return [];
     const start = new Date(applied.from + "T00:00:00").getTime();
     const end = new Date(applied.to + "T23:59:59").getTime();
     return scoped
-      .filter((o) => o.createdAt >= start && o.createdAt <= end)
-      .sort((a, b) => b.createdAt - a.createdAt);
+      .filter((o) => {
+        const t = new Date(o.created_at).getTime();
+        return t >= start && t <= end;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [scoped, applied]);
 
-  if (loading)
+  const isFetching = loadingMine || loadingRider;
+
+  if (loading || isFetching) {
     return (
       <MobileShell>
         <PageLoader label="History" />
       </MobileShell>
     );
+  }
 
   const proceed = () => {
     if (!from || !to) return;
@@ -89,14 +89,15 @@ function HistoryPage() {
     setApplied(null);
   };
 
-  const titleByRole = (
-    {
-      customer: "Order History",
-      vendor: "Marketplace History",
-      rider: "Delivery History",
-      admin: "Transaction History",
-    } as const
-  )[user?.role ?? "customer"];
+  const titleByRole =
+    (
+      {
+        customer: "Order History",
+        vendor: "Marketplace History",
+        rider: "Delivery History",
+        admin: "Transaction History",
+      } as const
+    )[role as "customer" | "vendor" | "rider" | "admin"] ?? "Transaction History";
 
   return (
     <MobileShell>
@@ -112,9 +113,9 @@ function HistoryPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <Link to="/" className="text-[10px] uppercase tracking-widest opacity-80">
-              EasyBlue
-            </Link>
+            <span className="text-[10px] uppercase tracking-widest opacity-80">
+              EasyBlue Logistics
+            </span>
           </div>
           <h1 className="text-2xl font-bold">{titleByRole}</h1>
           <p className="text-sm opacity-80 mt-1">Filter your transactions by date range.</p>
@@ -180,7 +181,7 @@ function HistoryPage() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {filtered.map((o) => (
-                    <TxRow key={o.id} order={o} userType={user?.role} />
+                    <TxRow key={o.id} order={o} userType={role} />
                   ))}
                 </div>
               )}
@@ -208,12 +209,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function TxRow({ order, userType }: { order: OrderRecord; userType?: string }) {
+function TxRow({ order, userType }: { order: Order; userType?: string }) {
   const [open, setOpen] = useState(false);
-  const d = new Date(order.createdAt);
+  const d = new Date(order.created_at);
   const date = d.toLocaleDateString();
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const amount = order.priceCents != null ? `$${(order.priceCents / 100).toFixed(2)}` : "—";
+  const amount = order.total_cents != null ? `$${(order.total_cents / 100).toFixed(2)}` : "—";
   const tone =
     order.status === "delivered"
       ? "bg-success/10 text-success"
@@ -230,12 +231,12 @@ function TxRow({ order, userType }: { order: OrderRecord; userType?: string }) {
           <FileText className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{order.itemDescription}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{order.item_description}</p>
           <p className="text-[11px] text-muted-foreground">
-            {order.id} · {order.type} · {date} {time}
+            {order.id} · {date} {time}
           </p>
           <p className="text-[11px] text-muted-foreground mt-1 truncate">
-            {order.receiverName} · {order.receiverLocation}
+            {order.receiver_name ?? "—"} · {order.receiver_location ?? "—"}
           </p>
         </div>
 

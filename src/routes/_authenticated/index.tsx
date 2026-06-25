@@ -8,6 +8,7 @@ import {
   Zap,
   Wallet,
   MapPin,
+  Download,
   ChevronRight,
   Truck,
 } from "lucide-react";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "EasyBlue Logistics — Ship Globally, Deliver Locally" },
-      { name: "description", content: "International shipping merged with local dispatch." },
+      { name: "description", content: "Dispatch at Your fingertips." },
     ],
   }),
   component: WelcomePage,
@@ -34,7 +35,7 @@ interface Slide {
 
 const slides: Slide[] = [
   {
-    title: "Customers & Marketplace",
+    title: "Marketplace",
     description: "Browse high-end appliances, bags, and electronics from trusted vendors.",
     icons: (
       <div className="flex gap-3">
@@ -45,7 +46,7 @@ const slides: Slide[] = [
     accent: "from-primary to-primary-glow",
   },
   {
-    title: "Vendors Hub",
+    title: "Business Hub",
     description:
       "Real-time control panel, stock management, subject to admin operational approval.",
     icons: <Sliders className="h-12 w-12" />,
@@ -59,7 +60,7 @@ const slides: Slide[] = [
   },
   {
     title: "Lightning Shipping & Instant Pay",
-    description: "Rapid local legs with secure escrow and instant rider payouts.",
+    description: "Rapid local delivery.",
     icons: (
       <div className="flex gap-3">
         <Zap className="h-10 w-10" />
@@ -70,14 +71,20 @@ const slides: Slide[] = [
   },
   {
     title: "Realtime Tracking",
-    description: "Live delivery streams from sender to doorstep with route polylines.",
+    description: "Live delivery streams from sender to doorstep with offline tracking.",
     icons: <MapPin className="h-12 w-12" />,
     accent: "from-primary to-cta",
   },
 ];
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => void;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 function WelcomePage() {
   const [idx, setIdx] = useState(0);
+  const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
   const navigate = useNavigate();
 
   // 1. Session Interceptor: Bounce authenticated users straight into the workspace
@@ -97,10 +104,29 @@ function WelcomePage() {
     return () => clearInterval(id);
   }, []);
 
+  // PWA Install prompt
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    const prompt = installPrompt as BeforeInstallPromptEvent;
+    prompt.prompt();
+    await prompt.userChoice;
+    setInstallPrompt(null);
+  };
+
   return (
     <MobileShell>
       {/* Header */}
-      <header className="safe-top px-5 pb-3 flex items-center justify-between">
+      <header className="safe-top px-5 pb-3 flex items-center justify-between gap-2">
+        {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
             <Truck className="h-5 w-5" />
@@ -112,7 +138,21 @@ function WelcomePage() {
             </p>
           </div>
         </div>
-        <DarkModeToggle />
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2 ml-auto">
+          {installPrompt && (
+            <button
+              onClick={handleInstall}
+              aria-label="Install app"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-primary/10 text-primary text-xs font-semibold border border-primary/20 active:scale-95 transition"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Install
+            </button>
+          )}
+          <DarkModeToggle />
+        </div>
       </header>
 
       <div className="px-5 pb-4">
@@ -171,10 +211,10 @@ function WelcomePage() {
           Get Started — Sign Up <ChevronRight className="h-5 w-5" />
         </Link>
         <Link
-          to="/login" // FIXED: Standardized destination link mapping across authorization layouts
+          to="/login"
           className="w-full py-3.5 rounded-2xl bg-secondary text-secondary-foreground font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.98] transition border border-border"
         >
-          Sign In to Account
+          Log into Existing Account
         </Link>
       </footer>
     </MobileShell>

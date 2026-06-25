@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, User, Store, Bike, Mail, Eye, EyeOff, Check } from "lucide-react";
@@ -106,11 +108,34 @@ function SignupPage() {
     return false;
   })();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setIsSubmitting(true);
 
     try {
+      let ninPhotoUrl: string | undefined = undefined;
+
+      if (role === "rider" && form.ninPhoto) {
+        const [meta, base64Data] = form.ninPhoto.split(",");
+        const mimeType = meta.match(/:(.*?);/)?.[1] ?? "image/jpeg";
+        const byteChars = atob(base64Data);
+        const byteArray = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+
+        const blob = new Blob([byteArray], { type: mimeType });
+
+        const ext = mimeType.split("/")[1] ?? "jpeg";
+        const safeName = form.email.replace(/[^a-zA-Z0-9]/g, "_");
+        const filename = "${Date.now()}-${safeName}.${ext}";
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("nin-photos")
+          .upload(filename, blob, { contentType: mimeType, upsert: false });
+
+        if (uploadError) throw new Error("Failed to upload NIN photo: " + uploadError.message);
+        ninPhotoUrl = supabase.storage.from("nin-photos").getPublicUrl(uploadData.path)
+          .data.publicUrl;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -127,14 +152,20 @@ function SignupPage() {
             vehicle_type:
               role === "rider" ? (form.hasLicense ? "licensed" : "unlicensed") : undefined,
             nin: role === "rider" ? form.nin : undefined,
-            nin_photo_url: role === "rider" ? form.ninPhoto : undefined,
+            nin_photo_url: role === "rider" ? ninPhotoUrl : undefined,
           },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        if (role === "rider" && ninPhotoUrl) {
+          const path = ninPhotoUrl.split("/nin-photos/")[1];
+          if (path) await supabase.storage.from("nin-photos").remove([path]);
+        }
 
-      // FIX: vendor/rider go to pending-approval; map "vendor" → "partner" for search param
+        throw error;
+      }
+
       if (role === "vendor" || role === "rider") {
         navigate({
           to: "/pending-approval",
@@ -142,6 +173,7 @@ function SignupPage() {
         });
         return;
       }
+      // FIX: vendor/rider go to pending-approval; map "vendor" → "partner" for search param
 
       // FIX: customer - show "check your email" instead of navigating to dashboard
       // Email confirmation must be clicked before the session is valid
@@ -243,7 +275,7 @@ function SignupPage() {
         <button
           onClick={() => {
             if (step === 1) setStep(2);
-            else if (step === 2 && step2Valid) handleSubmit(new Event("submit") as React.FormEvent);
+            else if (step === 2 && step2Valid) handleSubmit();
           }}
           disabled={(step === 2 && !step2Valid) || isSubmitting}
           className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-base disabled:opacity-40 active:scale-[0.98] transition shadow-lg shadow-primary/20 flex items-center justify-center"

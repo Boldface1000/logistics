@@ -6,7 +6,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 
 export const Route = createFileRoute("/_authenticated/vendor-dashboard")({
-  head: () => ({ meta: [{ title: "Vendor Dashboard — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Vendor Dashboard — EasyBluelogistics" }] }),
   component: VendorDashboardRoute,
 });
 
@@ -51,7 +51,7 @@ function VendorDashboardRoute() {
 
   // Guard Clause: Session gate-keeper fallback
   if (!sessionData) {
-    navigate({ to: "/auth" });
+    navigate({ to: "/login" });
     return null;
   }
 

@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated")({
 
     // Fetch the unified profile from the profiles view
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("users")
       .select("*")
       .eq("id", user.id)
       .maybeSingle();

@@ -278,6 +278,7 @@ export type Database = {
       }
       otp_codes: {
         Row: {
+          attempts: number
           code: string
           consumed_at: string | null
           created_at: string
@@ -286,6 +287,7 @@ export type Database = {
           phone: string
         }
         Insert: {
+          attempts?: number
           code: string
           consumed_at?: string | null
           created_at?: string
@@ -294,6 +296,7 @@ export type Database = {
           phone: string
         }
         Update: {
+          attempts?: number
           code?: string
           consumed_at?: string | null
           created_at?: string
@@ -352,6 +355,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limits: {
+        Row: {
+          bucket: string
+          hit_at: string
+        }
+        Insert: {
+          bucket: string
+          hit_at?: string
+        }
+        Update: {
+          bucket?: string
+          hit_at?: string
+        }
+        Relationships: []
       }
       riders: {
         Row: {
@@ -587,6 +605,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          price_cents: number
           product_type: string
           quantity: number
           received_at: string
@@ -598,6 +617,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          price_cents?: number
           product_type: string
           quantity: number
           received_at?: string
@@ -609,6 +629,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          price_cents?: number
           product_type?: string
           quantity?: number
           received_at?: string
@@ -789,6 +810,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       admin_scope: "super" | "logistics"

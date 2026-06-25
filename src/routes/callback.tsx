@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/client";
 import { toast } from "sonner";

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /**
  * useAdminOrderNotifications
  *
@@ -35,12 +36,6 @@ interface OrderRow {
   customer_id?: string;
 }
 
-interface RealtimePayload {
-  eventType: "INSERT" | "UPDATE" | "DELETE";
-  new: OrderRow;
-  old: Partial<OrderRow>;
-}
-
 // ─── Browser Notification helper ─────────────────────────────────────────────
 
 function requestNotificationPermission() {
@@ -72,12 +67,14 @@ export function useAdminOrderNotifications() {
     // Ask for browser notification permission on first mount
     requestNotificationPermission();
 
-    const handleChange = (payload: RealtimePayload) => {
-      const row = payload.new;
+    const handleChange = (
+      eventType: "INSERT" | "UPDATE",
+      row: OrderRow,
+      oldRow: Partial<OrderRow>,
+    ) => {
       const prevStatus = seenStatuses.current.get(row.id);
 
-      if (payload.eventType === "INSERT") {
-        // ── New order placed by customer ──────────────────────────────────
+      if (eventType === "INSERT") {
         const desc = row.item_description ?? "Delivery";
         const shortId = row.id.slice(0, 8).toUpperCase();
 
@@ -95,7 +92,7 @@ export function useAdminOrderNotifications() {
         return;
       }
 
-      if (payload.eventType === "UPDATE" && row.status !== prevStatus) {
+      if (eventType === "UPDATE" && row.status !== prevStatus) {
         seenStatuses.current.set(row.id, row.status);
         const shortId = row.id.slice(0, 8).toUpperCase();
         const rider = row.assigned_rider_name ?? "a rider";
@@ -138,7 +135,6 @@ export function useAdminOrderNotifications() {
             break;
 
           default:
-            // in_transit and other intermediate states — no admin alert needed
             break;
         }
       }
@@ -146,15 +142,11 @@ export function useAdminOrderNotifications() {
 
     const channel = supabase
       .channel("admin:order-lifecycle")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "orders" },
-        (p) => handleChange({ ...p, eventType: "INSERT" } as RealtimePayload),
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (p) =>
+        handleChange("INSERT", p.new as OrderRow, {}),
       )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders" },
-        (p) => handleChange({ ...p, eventType: "UPDATE" } as RealtimePayload),
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (p) =>
+        handleChange("UPDATE", p.new as OrderRow, p.old as Partial<OrderRow>),
       );
 
     channel.subscribe((status, err) => {

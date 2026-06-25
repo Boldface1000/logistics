@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Trash2, User as UserIcon, Mail, Phone, Calendar } from "lucide-react";
@@ -34,10 +35,7 @@ export function AdminUsersDialog({
   const load = async () => {
     setLoading(true);
     const dbRole = tab === "customer" ? "customer" : tab === "vendor" ? "vendor" : "rider";
-    const { data: roleRows } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", dbRole);
+    const { data: roleRows } = await supabase.from("users").select("user_id").eq("role", dbRole);
     const ids = (roleRows ?? []).map((r) => r.user_id);
     if (ids.length === 0) {
       setRows([]);

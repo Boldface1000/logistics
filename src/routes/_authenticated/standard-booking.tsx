@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Bike, ArrowRight, MapPinCheck } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
@@ -8,13 +9,17 @@ import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/_authenticated/standard-booking")({
-  head: () => ({ meta: [{ title: "Standard Booking — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Standard Booking — EasyBlue Logistics" }] }),
   component: StandardBookingPage,
 });
 
 function StandardBookingPage() {
   const loading = useArtificialLoading(450);
   const navigate = useNavigate();
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    auth.current().then((u) => setRole(u?.role ?? null));
+  }, []);
   const [senderName, setSenderName] = useState("");
   const [senderLocation, setSenderLocation] = useState("");
   const [senderPhone, setSenderPhone] = useState("");
@@ -37,7 +42,7 @@ function StandardBookingPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = auth.current();
+    const user = await auth.current();
     if (!user) {
       toast.error("Please sign in");
       navigate({ to: "/login" });
@@ -77,13 +82,13 @@ function StandardBookingPage() {
       if (error) throw error;
 
       toast.success("Booking confirmed", {
-        description: `Reference ${orderId} — a rider will be assigned shortly.`,
+        description: `Reference ${orderId} — a rider has contacted you.`,
       });
-      navigate({ to: backTarget() });
+      navigate({ to: backTarget(role) });
     } catch (err: any) {
-      console.error("Database Order Persistence Error:", err);
+      console.error("Order Persistence Error:", err);
       toast.error("Failed to confirm booking", {
-        description: err.message || "An unexpected database exception occurred.",
+        description: err.message || "An unexpected error occurred.",
       });
     } finally {
       setSubmitting(false);
@@ -94,7 +99,7 @@ function StandardBookingPage() {
     <MobileShell>
       <header className="safe-top px-5 pb-3 flex items-center gap-3 border-b border-border">
         <Link
-          to={backTarget()}
+          to={backTarget(role)}
           className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center active:scale-95"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -123,7 +128,7 @@ function StandardBookingPage() {
             label="Sender phone number"
             value={senderPhone}
             onChange={setSenderPhone}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
 
           <Field
@@ -142,7 +147,7 @@ function StandardBookingPage() {
             label="Receiver phone number"
             value={receiverPhone}
             onChange={setReceiverPhone}
-            placeholder="e.g. +2347…"
+            placeholder="e.g. 080…"
           />
 
           <div className="flex flex-col gap-1.5">
@@ -170,7 +175,7 @@ function StandardBookingPage() {
             className="mt-2 h-12 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
-              "Booking…"
+              "Booking your Order…"
             ) : (
               <>
                 Confirm Booking <ArrowRight className="h-4 w-4" />{" "}
@@ -208,7 +213,6 @@ function Field({
   );
 }
 
-function backTarget(): "/dashboard" | "/vendor-dashboard" {
-  const u = auth.current();
-  return u?.role === "vendor" ? "/vendor-dashboard" : "/dashboard";
+function backTarget(role: string | null): "/dashboard" | "/vendor-dashboard" {
+  return role === "vendor" ? "/vendor-dashboard" : "/dashboard";
 }

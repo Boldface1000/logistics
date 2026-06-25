@@ -2,25 +2,27 @@
 
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
-import { nitro } from "nitro/vite";
 
 export default defineConfig({
   plugins: [
-    tsconfigPaths(),
-    tailwindcss(),
-    tanstackRouter(),
+    // 1. TanStack Start needs to be right at the top so it can crawl routes
+    //    and generate `routeTree.gen.ts` before any other plugin tries to read it.
     tanstackStart({
-      server: { entry: "server" },
+      server: {
+        entry: "server",
+      },
       serverFns: {
         disableCsrfMiddlewareWarning: true,
       },
     }),
+    // 2. Paths resolution next
+    tsconfigPaths(),
+    // 3. Styling and UI compilation
+    tailwindcss(),
     viteReact(),
-    nitro(),
   ],
 
   // ── Pre-bundle heavy deps so the browser doesn't do it on first load ──

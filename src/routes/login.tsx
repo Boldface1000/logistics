@@ -85,7 +85,7 @@ function LoginPage() {
       if (!profile) {
         toast.error("Profile Not Found", {
           description:
-            "Your authentication is valid, but your user record is missing. Please cntact support.",
+            "Your authentication is valid, but your user record is missing. Please contact support.",
         });
         await supabase.auth.signOut();
         return;
@@ -110,6 +110,9 @@ function LoginPage() {
 
       toast.success(`Welcome back, ${profile.first_name || "User"}`);
 
+      localStorage.setItem("remember_me", remember ? "true" : "false");
+
+      navigate({ to: "/login" });
       // Routing distribution matrix
       if (profile.role === "admin") {
         navigate({ to: "/admin" });

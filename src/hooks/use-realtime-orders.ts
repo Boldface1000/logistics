@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { useEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/client";
