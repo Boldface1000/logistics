@@ -58,11 +58,7 @@ function RiderDashboard() {
     queryKey: ["rider-profile", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId!)
-        .single();
+      const { data, error } = await supabase.from("users").select("*").eq("id", userId!).single();
       if (error) throw error;
       return data;
     },

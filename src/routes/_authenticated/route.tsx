@@ -17,28 +17,28 @@ export interface AuthContext {
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async ({ location }): Promise<{ auth: AuthContext }> => {
-    const { data, error } = await supabase.auth.getUser();
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error || !data?.user) {
+    if (!session) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },
       });
     }
 
-    const user = data.user;
-
     // Fetch the unified profile from the profiles view
     const { data: profile } = await supabase
       .from("users")
       .select("*")
-      .eq("id", user.id)
+      .eq("id", session.user.id)
       .maybeSingle();
 
     const auth: AuthContext = {
-      userId: user.id,
-      email: profile?.email ?? user.email ?? "",
+      userId: session.user.id,
+      email: profile?.email ?? session.user.email ?? "",
       profile: profile,
       role: profile?.role ?? "customer",
     };

@@ -155,6 +155,7 @@ interface StockPayload {
   id?: string;
   product_type: string;
   quantity: number;
+  price_cents: number;
   received_at: string;
   image_url?: string;
 }
@@ -185,6 +186,7 @@ function VendorStocksModal({
       const targetRow = {
         product_type: payload.product_type,
         quantity: payload.quantity,
+        price_cents: payload.price_cents,
         received_at: payload.received_at,
         image_url: payload.image_url,
         updated_by: user?.id || null,
@@ -353,6 +355,9 @@ function StockSubForm({
   onCancel: () => void;
   onSave: (data: any) => void;
 }) {
+  const [priceCents, setPriceCents] = useState(
+    initial?.price_cents ? String(initial.price_cents / 100) : "",
+  );
   const [productType, setProductType] = useState(initial?.product_type || "");
   const [quantity, setQuantity] = useState(initial?.quantity?.toString() || "");
   const [receivedAt, setReceivedAt] = useState(
@@ -383,6 +388,7 @@ function StockSubForm({
       id: initial?.id,
       product_type: productType.trim(),
       quantity: parseInt(quantity, 10) || 0,
+      price_cents: Math.round(parseFloat(priceCents) * 100) || 0,
       received_at: receivedAt,
       image_url: imageDataUrl,
     });
@@ -414,6 +420,18 @@ function StockSubForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Unit Price (Naira)
+            </label>
+            <input
+              type="number"
+              value={priceCents}
+              onChange={(e) => setPriceCents(e.target.value)}
+              placeholder="0.00"
+              className="mt-1 w-full h-11 px-3 rounded-xl bginput border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
           <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Total Quantity

@@ -7,9 +7,10 @@ import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
+import { safeText, digitsOnly, nameOnly, maxLen } from "@/lib/validators";
 
 export const Route = createFileRoute("/_authenticated/park-waybill")({
-  head: () => ({ meta: [{ title: "Park Waybill — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Park Waybill — EasyBlue logistics" }] }),
   component: ParkWaybillPage,
 });
 
@@ -130,74 +131,74 @@ function ParkWaybillPage() {
           <Field
             label="Park name"
             value={parkName}
-            onChange={setParkName}
+            onChange={(v) => setParkName(safeText(maxLen(v, 50)))}
             placeholder="e.g. Abuja Park"
           />
           <Field
             label="Contact number"
             value={contactNumber}
-            onChange={setContactNumber}
+            onChange={(v) => setContactNumber(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
           <Field
             label="Driver's/ storekeeper's number"
             value={driverOrStorekeeperNumber}
-            onChange={setDriverOrStorekeeperNumber}
+            onChange={(v) => setDriverOrStorekeeperNumber(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
           <Field
             label="Name on parcel"
             value={nameOnParcel}
-            onChange={setNameOnParcel}
+            onChange={(v) => setNameOnParcel(nameOnly(maxLen(v, 20)))}
             placeholder="Full name"
           />
           <Field
             label="Phone number on parcel"
             value={phoneNumberOnParcel}
-            onChange={setPhoneNumberOnParcel}
+            onChange={(v) => setPhoneNumberOnParcel(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
           <Field
             label="Waybill ID(optional)"
             value={waybill}
-            onChange={setWaybill}
+            onChange={(v) => setWaybill(safeText(maxLen(v, 20)))}
             placeholder="Reference (if any)"
           />
           <Field
             label="Delivery code (optional)"
             value={deliveryCode}
-            onChange={setDeliveryCode}
+            onChange={(v) => setDeliveryCode(safeText(maxLen(v, 20)))}
             placeholder="Code (if any)"
           />
           <Field
             label="Content of item"
             value={contentOfItem}
-            onChange={setContentOfItem}
+            onChange={(v) => setContentOfItem(safeText(maxLen(v, 50)))}
             placeholder="What is being shipped?"
             textarea
           />
           <Field
             label="Amount to be paid"
             value={amountToBePaid}
-            onChange={setAmountToBePaid}
-            placeholder="e.g. 150,000"
+            onChange={(v) => setAmountToBePaid(digitsOnly(maxLen(v, 9)))}
+            placeholder="e.g. 20,000, 1,250,000..."
           />
           <Field
             label="Receiver's name"
             value={receiverName}
-            onChange={setReceiverName}
+            onChange={(v) => setReceiverName(nameOnly(maxLen(v, 20)))}
             placeholder="Full name"
           />
           <Field
             label="Drop-off point"
             value={dropOffPoint}
-            onChange={setDropOffPoint}
+            onChange={(v) => setDropOffPoint(safeText(maxLen(v, 50)))}
             placeholder="e.g. DELSU, Abraka"
           />
           <Field
             label="Drop-off number"
             value={dropOffNumber}
-            onChange={setDropOffNumber}
+            onChange={(v) => setDropOffNumber(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
 

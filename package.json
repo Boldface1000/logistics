@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "deploy:cloudflare": "npm run build && wrangler pages deploy --project-name=easybluelogistics"
+    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name=easybluelogistics"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

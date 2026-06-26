@@ -7,6 +7,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
+import { safeText, digitsOnly, nameOnly, maxLen } from "@/lib/validators";
 
 export const Route = createFileRoute("/_authenticated/standard-booking")({
   head: () => ({ meta: [{ title: "Standard Booking — EasyBlue Logistics" }] }),
@@ -115,38 +116,38 @@ function StandardBookingPage() {
           <Field
             label="Sender name"
             value={senderName}
-            onChange={setSenderName}
+            onChange={(v) => setSenderName(nameOnly(maxLen(v, 20)))}
             placeholder="Full name"
           />
           <Field
             label="Sender location"
             value={senderLocation}
-            onChange={setSenderLocation}
+            onChange={(v) => setSenderLocation(safeText(maxLen(v, 50)))}
             placeholder="Pickup point"
           />
           <Field
             label="Sender phone number"
             value={senderPhone}
-            onChange={setSenderPhone}
+            onChange={(v) => setSenderPhone(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
 
           <Field
             label="Receiver name"
             value={receiverName}
-            onChange={setReceiverName}
+            onChange={(v) => setReceiverName(nameOnly(maxLen(v, 20)))}
             placeholder="Full name"
           />
           <Field
             label="Receiver location"
             value={receiverLocation}
-            onChange={setReceiverLocation}
+            onChange={(v) => setReceiverLocation(safeText(maxLen(v, 50)))}
             placeholder="Drop-off point"
           />
           <Field
             label="Receiver phone number"
             value={receiverPhone}
-            onChange={setReceiverPhone}
+            onChange={(v) => setReceiverPhone(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
 
@@ -157,15 +158,19 @@ function StandardBookingPage() {
               onChange={(e) => setPaymentMode(e.target.value as "transfer" | "cash")}
               className="h-12 px-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="transfer">Transfer</option>
-              <option value="cash">Cash</option>
+              <option className="text-blue-900" value="transfer">
+                Transfer
+              </option>
+              <option className="text-blue-900" value="cash">
+                Cash
+              </option>
             </select>
           </div>
 
           <Field
             label="Item type / description"
             value={item}
-            onChange={setItem}
+            onChange={(v) => setItem(safeText(maxLen(v, 50)))}
             placeholder="Documents, food, package…"
           />
 

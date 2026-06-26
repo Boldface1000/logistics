@@ -1,17 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable prettier/prettier */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { createFileRoute, Link, useNavigate, useRouteContext, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ShoppingBag, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
-import { auth } from "@/lib/auth";
 import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/_authenticated/marketplace-checkout")({
   head: () => ({ meta: [{ title: "Marketplace Checkout — EasyBlue" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    stockId: typeof search.stockId === "string" ? search.stockId : "",
+  }),
   component: MarketplaceCheckoutPage,
 });
 
@@ -19,14 +21,12 @@ function MarketplaceCheckoutPage() {
   const artificialLoading = useArtificialLoading(450);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  const [role, setRole] = useState<string | null>(null);
-  useEffect(() => {
-    auth.current().then((u) => setRole(u?.role ?? null));
-  }, []);
+  const { auth } = useRouteContext({ from: "/_authenticated" });
+  const { stockId: preselectedStockId } = useSearch({ from: "/_authenticated/marketplace-checkout" });
+  const role = auth.role;
 
   // State Management for Purchase Flow
-  const [selectedStockId, setSelectedStockId] = useState("");
+  const [selectedStockId, setSelectedStockId] = useState(preselectedStockId ?? "");
   const [quantity, setQuantity] = useState(1);
   const [paymentMode, setPaymentMode] = useState<"transfer" | "cash">("transfer");
 
@@ -66,14 +66,13 @@ function MarketplaceCheckoutPage() {
   // 2. Transactional Mutation for Order Placement
   const checkoutMutation = useMutation({
     mutationFn: async () => {
-      const user = await auth.current();
-      if (!user) throw new Error("Authentication required. Please sign back in.");
+      if (!auth.userId) throw new Error("Authentication required. Please sign back in.");
       if (!selectedStockItem)
         throw new Error("Please select a product from the marketplace options.");
 
       // Direct connection hook to atomic database procedure
       const { data: orderId, error } = await supabase.rpc("create_marketplace_order", {
-        p_customer_id: user.id,
+        p_customer_id: auth.userId,
         p_vendor_id: selectedStockItem.vendor_id,
         p_product_type: selectedStockItem.product_type,
         p_purchase_quantity: quantity,

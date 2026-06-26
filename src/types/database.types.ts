@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_profiles: {
@@ -780,15 +755,15 @@ export type Database = {
           p_customer_id: string
           p_driver_or_storekeeper_number?: string
           p_drop_off_point?: string
-          p_item_description: string
+          p_item_description?: string
           p_park_name?: string
-          p_payment_mode: string
-          p_receiver_location: string
-          p_receiver_name: string
-          p_receiver_phone: string
-          p_sender_location: string
-          p_sender_name: string
-          p_sender_phone: string
+          p_payment_mode?: string
+          p_receiver_location?: string
+          p_receiver_name?: string
+          p_receiver_phone?: string
+          p_sender_location?: string
+          p_sender_name?: string
+          p_sender_phone?: string
           p_total_cents?: number
         }
         Returns: string
@@ -796,16 +771,16 @@ export type Database = {
       create_marketplace_order: {
         Args: {
           p_customer_id: string
-          p_payment_mode: string
+          p_payment_mode?: string
           p_product_type: string
           p_purchase_quantity: number
-          p_receiver_location: string
-          p_receiver_name: string
-          p_receiver_phone: string
-          p_sender_location: string
-          p_sender_name: string
-          p_sender_phone: string
-          p_total_cents: number
+          p_receiver_location?: string
+          p_receiver_name?: string
+          p_receiver_phone?: string
+          p_sender_location?: string
+          p_sender_name?: string
+          p_sender_phone?: string
+          p_total_cents?: number
           p_vendor_id: string
         }
         Returns: string
@@ -955,9 +930,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       admin_scope: ["super", "logistics"],

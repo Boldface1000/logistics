@@ -5,8 +5,8 @@ import { useState } from "react";
 import { ArrowLeft, User, Store, Bike, Mail, Eye, EyeOff, Check } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { toast } from "sonner";
-
 import { supabase } from "@/integrations/client";
+import { safeText, digitsOnly, nameOnly, maxLen } from "@/lib/validators";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign Up — EasyBlue Logistics" }] }),
@@ -125,7 +125,7 @@ function SignupPage() {
 
         const ext = mimeType.split("/")[1] ?? "jpeg";
         const safeName = form.email.replace(/[^a-zA-Z0-9]/g, "_");
-        const filename = "${Date.now()}-${safeName}.${ext}";
+        const filename = Date.now() + "_" + safeName + "." + ext;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("nin-photos")
@@ -146,6 +146,7 @@ function SignupPage() {
             last_name: form.lastName,
             role: role,
             phone: form.phone || form.businessPhone,
+            agreed_terms: form.agreed,
             is_approved: role === "customer",
             business_name: role === "vendor" ? form.businessName : undefined,
             business_phone: role === "vendor" ? form.businessPhone : undefined,
@@ -301,8 +302,8 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
   return (
     <>
       <h2 className="text-xl font-bold text-foreground mb-1">
-        {role === "customer" && "Customer details"}
-        {role === "vendor" && "Vendor details"}
+        {role === "customer" && "Profile details"}
+        {role === "vendor" && "Profile details"}
         {role === "rider" && "Rider details"}
       </h2>
       <p className="text-sm text-muted-foreground mb-5">Fill in your information to continue.</p>
@@ -314,7 +315,7 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
             <Field label="Registered business name">
               <TextInput
                 value={form.businessName}
-                onChange={(v) => update("businessName", v)}
+                onChange={(v) => update("businessName", safeText(maxLen(v, 20)))}
                 placeholder="Acme Logistics Ltd."
               />
             </Field>
@@ -324,14 +325,14 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
         <Field label="Firstname">
           <TextInput
             value={form.firstName}
-            onChange={(v) => update("firstName", v)}
+            onChange={(v) => update("firstName", nameOnly(maxLen(v, 15)))}
             placeholder="Jane"
           />
         </Field>
         <Field label="Lastname">
           <TextInput
             value={form.lastName}
-            onChange={(v) => update("lastName", v)}
+            onChange={(v) => update("lastName", nameOnly(maxLen(v, 15)))}
             placeholder="Doe"
           />
         </Field>
@@ -342,8 +343,8 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
           <Field label="Business phone number">
             <TextInput
               value={form.businessPhone}
-              onChange={(v) => update("businessPhone", v)}
-              placeholder="+234 800 000 0000"
+              onChange={(v) => update("businessPhone", digitsOnly(maxLen(v, 11)))}
+              placeholder="080..."
             />
           </Field>
         )}
@@ -355,7 +356,7 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
               type="email"
               value={form.email}
               onChange={(e) => update("email", e.target.value)}
-              placeholder="you@email.com"
+              placeholder="youremail@email.com"
               className="w-full h-12 pl-11 pr-4 rounded-xl bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -365,8 +366,8 @@ function RoleForm({ role, form, update, showPwd, toggleShowPwd }: RoleFormProps)
           <Field label="Phone number">
             <TextInput
               value={form.phone}
-              onChange={(v) => update("phone", v)}
-              placeholder="+234 800 000 0000"
+              onChange={(v) => update("phone", digitsOnly(maxLen(v, 11)))}
+              placeholder="080..."
             />
           </Field>
         )}
