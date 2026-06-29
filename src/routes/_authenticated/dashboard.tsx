@@ -68,7 +68,7 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
   if (loading || !userId) {
     return (
       <MobileShell>
-        <PageLoader label={variant === "vendor" ? "Hold On..." : "This won't take long"} />
+        <PageLoader label={variant === "vendor" ? "😴💭..." : "This won't take long"} />
       </MobileShell>
     );
   }
@@ -172,7 +172,7 @@ function HomeHero({
     },
     {
       header: "Inter-State",
-      subheader: "Book Local Delivery",
+      subheader: "Send Items outside the State",
       to: "/standard-booking",
       icon: <Truck className="h-5 w-5" />,
       accentVar: "zinc",
@@ -237,6 +237,11 @@ function HomeHero({
               Pick a service above to configure fulfillment items. After operations commits a
               dispatch modification, assignable details are instantly piped to your active real-time
               panels.
+            </p>
+            <br />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Note: Significant charges will be incurred if a drop-off location is changed from
+              intial info in booking form.
             </p>
           </div>
         </div>

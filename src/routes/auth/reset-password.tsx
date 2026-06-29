@@ -18,7 +18,6 @@ interface SearchParams {
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth/reset-password" }) as SearchParams;
-  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

@@ -38,7 +38,7 @@ function ForgotPasswordPage() {
       });
     } catch (err: any) {
       toast.error("Failed to Send Reset Email", {
-        description: err.message || "An unexpected error occurred. Please try again.",
+        description: err.message || "An unexpected error occurred 😕 Please try again.",
       });
     } finally {
       setIsLoading(false);

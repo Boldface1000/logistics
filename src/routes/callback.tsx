@@ -45,7 +45,7 @@ export const Route = createFileRoute("/callback")({
         console.error("Error fetching profile in auth callback:", profileError);
         toast.error("Profile lookup error", { description: profileError.message });
         await supabase.auth.signOut();
-        throw redirect({ to: "/login" });
+        throw redirect({ to: "/" });
       }
 
       if (profile.approval === "pending" || profile.approval === "rejected") {
@@ -61,14 +61,14 @@ export const Route = createFileRoute("/callback")({
       if (profile.role === "rider") throw redirect({ to: "/rider-dashboard" });
       throw redirect({ to: "/dashboard" });
     } else {
-      console.log("No session found after auth callback, redirecting to login.");
+      console.log("user not found.");
       throw redirect({ to: "/login" });
     }
   },
   component: () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <p className="text-foreground">Processing authentication...</p>
+        <p className="text-foreground">Processing ...</p>
       </div>
     );
   },

@@ -22,7 +22,7 @@ self.addEventListener("activate", (event) => {
 // Handle background push payloads from FCM. Until FCM is wired this is a
 // no-op — push events simply won't be received in the absence of a token.
 self.addEventListener("push", (event) => {
-  let payload = { notification: { title: "EasyBlue", body: "New update" } };
+  let payload = { notification: { title: "EasyBlue Logistics", body: "😀 New Message!" } };
   try {
     if (event.data) payload = event.data.json();
   } catch (_e) {
@@ -31,9 +31,9 @@ self.addEventListener("push", (event) => {
 
   const n = payload.notification || {};
   event.waitUntil(
-    self.registration.showNotification(n.title || "EasyBlue", {
+    self.registration.showNotification(n.title || "EasyBlue Logistics", {
       body: n.body || "",
-      icon: "/favicon.ico",
+      icon: "/icon-512.png",
       data: payload.data || {},
     }),
   );

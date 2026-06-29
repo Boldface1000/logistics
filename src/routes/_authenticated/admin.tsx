@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Share2,
   Loader2,
+  LucideAlignHorizontalDistributeCenter,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
@@ -304,7 +305,7 @@ function AdminPage() {
   }
 
   // Derive explicit application administrative operation authorization scopes
-  const rawScope = (adminProfile as any).admin_profiles?.scope;
+  const rawScope = Array.isArray(adminProfile.admin_profiles) ? (adminProfile as any).admin_profiles[0]?.scope : (adminProfile as any).admin_profiles?.scope;
   const scope: AdminScope = rawScope === "logistics" ? "logistics" : "super";
 
   return (
@@ -474,7 +475,7 @@ function SuperScope({
   onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
   ordersList: RealOrder[];
 }) {
-  if (tab === "profile") {
+  if (tab === "users") {
     return <ProfileApprovals list={pendingList} onUpdateStatus={onUpdateStatus} />;
   }
   if (tab === "stats") {
@@ -1145,10 +1146,26 @@ function KPI({ label, val, tone }: { label: string; val: string; tone: "cta" | "
   );
 }
 
-// FIXED: Clean props engine injection strategy avoids duplication network overhead loops
 function SignOutComponent({ user }: { user: { id: string; role: string; full_name: string } }) {
   const navigate = useNavigate();
   const [isSignOutPending, setIsSignOutPending] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setInstallPrompt(null);
+  };
 
   const handleSignOut = async () => {
     setIsSignOutPending(true);
@@ -1158,10 +1175,9 @@ function SignOutComponent({ user }: { user: { id: string; role: string; full_nam
       }
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
       toast.success("Identity session terminated safely");
       navigate({ to: "/login" });
-    } catch (err) {
+    } catch {
       toast.error("Sign out process encountered a fault");
     } finally {
       setIsSignOutPending(false);
@@ -1169,25 +1185,64 @@ function SignOutComponent({ user }: { user: { id: string; role: string; full_nam
   };
 
   return (
-    <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
-      <div>
-        <p className="text-sm font-semibold text-foreground">{user.full_name}</p>
-        <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">
-          {user.role} Authorization Node
-        </p>
+    <div className="space-y-3">
+      {/* Profile card */}
+      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{user.full_name}</p>
+          <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">
+            {user.role} Authorization Node
+          </p>
+        </div>
+        <button
+          onClick={handleSignOut}
+          disabled={isSignOutPending}
+          className="h-10 px-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 text-sm font-semibold transition hover:bg-red-500/20 disabled:opacity-50 active:scale-[0.98]"
+        >
+          {isSignOutPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+          Disconnect
+        </button>
       </div>
+
+      {/* Dark mode */}
+      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Appearance</p>
+          <p className="text-[11px] text-muted-foreground">Toggle light / dark mode</p>
+        </div>
+        <DarkModeToggle size="md" />
+      </div>
+
+      {/* History */}
       <button
-        onClick={handleSignOut}
-        disabled={isSignOutPending}
-        className="h-10 px-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 text-sm font-semibold transition hover:bg-red-500/20 disabled:opacity-50 active:scale-[0.98]"
+        onClick={() => navigate({ to: "/history" })}
+        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center justify-between active:scale-[0.99]"
       >
-        {isSignOutPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <LogOut className="h-4 w-4" />
-        )}
-        Disconnect
+        <div className="text-left">
+          <p className="text-sm font-semibold text-foreground">Transaction History</p>
+          <p className="text-[11px] text-muted-foreground">View all order logs</p>
+        </div>
+        <span className="text-muted-foreground text-lg">→</span>
       </button>
+
+      {/* Install */}
+      {!installed && installPrompt && (
+        <button
+          onClick={handleInstall}
+          className="w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between active:scale-[0.99]"
+        >
+          <div className="text-left">
+            <p className="text-sm font-semibold text-foreground">Install App</p>
+            <p className="text-[11px] text-muted-foreground">Add EasyBlue to your home screen</p>
+          </div>
+          <span className="text-primary font-bold text-sm">Install</span>
+        </button>
+      )}
+      {installed && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center text-sm font-semibold text-emerald-500">
+          App installed ✓
+        </div>
+      )}
     </div>
   );
 }

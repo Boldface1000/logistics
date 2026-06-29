@@ -1,7 +1,7 @@
 {
   "name": "EasyBlue Logistics",
-  "short_name": "EasyBlue",
-  "description": "International shipping merged with local dispatch and partner discounts.",
+  "short_name": "EBL",
+  "description": "International & Local Shipping merged with local dispatch and Business account Discounts.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

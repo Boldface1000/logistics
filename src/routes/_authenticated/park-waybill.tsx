@@ -39,7 +39,7 @@ function ParkWaybillPage() {
   if (loading)
     return (
       <MobileShell>
-        <PageLoader label="Park Waybill" />
+        <PageLoader label="Park Waybill 🚚" />
       </MobileShell>
     );
 
@@ -97,13 +97,13 @@ function ParkWaybillPage() {
       if (error) throw error;
 
       toast.success("Waybill booked", {
-        description: `Reference ${orderId} — assigning a rider.`,
+        description: `Reference ${orderId} — Your rider is on the Way 🎉.`,
       });
       navigate({ to: backTarget(role) });
     } catch (err: any) {
       console.error("Waybill Persistence Error:", err);
       toast.error("Failed to book waybill", {
-        description: err.message || "An unexpected error occurred.",
+        description: err.message || "An unexpected error occurred 😕 Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -129,7 +129,7 @@ function ParkWaybillPage() {
       <main className="flex-1 overflow-y-auto px-5 pt-5 pb-6 scrollbar-hide">
         <form onSubmit={submit} className="flex flex-col gap-3.5">
           <Field
-            label="Park name"
+            label="Park name (where is the item coming from?)"
             value={parkName}
             onChange={(v) => setParkName(safeText(maxLen(v, 50)))}
             placeholder="e.g. Abuja Park"
@@ -174,7 +174,7 @@ function ParkWaybillPage() {
             label="Content of item"
             value={contentOfItem}
             onChange={(v) => setContentOfItem(safeText(maxLen(v, 50)))}
-            placeholder="What is being shipped?"
+            placeholder="What is being shipped? 📦"
             textarea
           />
           <Field
@@ -190,10 +190,10 @@ function ParkWaybillPage() {
             placeholder="Full name"
           />
           <Field
-            label="Drop-off point"
+            label="Drop-off point (where is the item going to?)"
             value={dropOffPoint}
             onChange={(v) => setDropOffPoint(safeText(maxLen(v, 50)))}
-            placeholder="e.g. DELSU, Abraka"
+            placeholder="e.g. DELSU, Abraka 🚚"
           />
           <Field
             label="Drop-off number"

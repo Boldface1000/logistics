@@ -51,7 +51,7 @@ function fireBrowserNotification(title: string, body: string, tag: string) {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
   try {
-    new Notification(title, { body, tag, icon: "/favicon.png" });
+    new Notification(title, { body, tag, icon: "/icon-512.png" });
   } catch {
     // Some browsers (e.g. Safari 15) throw on Notification constructor — ignore
   }

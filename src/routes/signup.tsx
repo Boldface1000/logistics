@@ -108,88 +108,80 @@ function SignupPage() {
     return false;
   })();
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-
-    try {
-      let ninPhotoUrl: string | undefined = undefined;
-
-      if (role === "rider" && form.ninPhoto) {
-        const [meta, base64Data] = form.ninPhoto.split(",");
-        const mimeType = meta.match(/:(.*?);/)?.[1] ?? "image/jpeg";
-        const byteChars = atob(base64Data);
-        const byteArray = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
-
-        const blob = new Blob([byteArray], { type: mimeType });
-
-        const ext = mimeType.split("/")[1] ?? "jpeg";
-        const safeName = form.email.replace(/[^a-zA-Z0-9]/g, "_");
-        const filename = Date.now() + "_" + safeName + "." + ext;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("nin-photos")
-          .upload(filename, blob, { contentType: mimeType, upsert: false });
-
-        if (uploadError) throw new Error("Failed to upload NIN photo: " + uploadError.message);
-        ninPhotoUrl = supabase.storage.from("nin-photos").getPublicUrl(uploadData.path)
-          .data.publicUrl;
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/callback`,
-          data: {
-            first_name: form.firstName,
-            last_name: form.lastName,
-            role: role,
-            phone: form.phone || form.businessPhone,
-            agreed_terms: form.agreed,
-            is_approved: role === "customer",
-            business_name: role === "vendor" ? form.businessName : undefined,
-            business_phone: role === "vendor" ? form.businessPhone : undefined,
-            vehicle_type:
-              role === "rider" ? (form.hasLicense ? "licensed" : "unlicensed") : undefined,
-            nin: role === "rider" ? form.nin : undefined,
-            nin_photo_url: role === "rider" ? ninPhotoUrl : undefined,
-          },
-        },
-      });
-
-      if (error) {
-        if (role === "rider" && ninPhotoUrl) {
-          const path = ninPhotoUrl.split("/nin-photos/")[1];
-          if (path) await supabase.storage.from("nin-photos").remove([path]);
-        }
-
-        throw error;
-      }
-
-      if (role === "vendor" || role === "rider") {
-        navigate({
-          to: "/pending-approval",
-          search: { role: role === "vendor" ? "partner" : "rider" } as any,
-        });
-        return;
-      }
-      // FIX: vendor/rider go to pending-approval; map "vendor" → "partner" for search param
-
-      // FIX: customer - show "check your email" instead of navigating to dashboard
-      // Email confirmation must be clicked before the session is valid
-      toast.success("Account created!", {
-        description: "Check your email and click the confirmation link to activate your account.",
-      });
-      navigate({ to: "/login" });
-    } catch (err: any) {
-      toast.error("Account Creation Failed", {
-        description: err.message || "An unexpected system error occurred during registration.",
-      });
-    } finally {
-      setIsSubmitting(false);
+const handleSubmit = async () => {
+  setIsSubmitting(true);
+  const currentRole = role; // snapshot before async
+  
+  try {
+    let ninPhotoUrl: string | undefined = undefined;
+    
+    if (currentRole === "rider" && form.ninPhoto) {
+      const [meta, base64Data] = form.ninPhoto.split(",");
+      const mimeType = meta.match(/:(.*?);/)?.[1] ?? "image/jpeg";
+      const byteChars = atob(base64Data);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArray], { type: mimeType });
+      const ext = mimeType.split("/")[1] ?? "jpeg";
+      const safeName = form.email.replace(/[^a-zA-Z0-9]/g, "_");
+      const filename = Date.now() + "_" + safeName + "." + ext;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("nin-photos")
+        .upload(filename, blob, { contentType: mimeType, upsert: false });
+      
+      if (uploadError) throw new Error("Failed to upload NIN photo: " + uploadError.message);
+      ninPhotoUrl = supabase.storage.from("nin-photos").getPublicUrl(uploadData.path).data.publicUrl;
     }
-  };
+    
+    const { error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/callback`,
+        data: {
+          first_name: form.firstName,
+          last_name: form.lastName,
+          user_role: currentRole, // ← renamed from "role"
+          phone: form.phone || form.businessPhone,
+          agreed_terms: form.agreed,
+          business_name: currentRole === "vendor" ? form.businessName : undefined,
+          business_phone: currentRole === "vendor" ? form.businessPhone : undefined,
+          vehicle_type: currentRole === "rider" ?
+            (form.hasLicense ? "licensed" : "unlicensed") : undefined,
+          nin: currentRole === "rider" ? form.nin : undefined,
+          nin_photo_url: currentRole === "rider" ? ninPhotoUrl : undefined,
+        },
+      },
+    });
+    
+    if (error) {
+      if (currentRole === "rider" && ninPhotoUrl) {
+        const path = ninPhotoUrl.split("/nin-photos/")[1];
+        if (path) await supabase.storage.from("nin-photos").remove([path]);
+      }
+      throw error;
+    }
+    
+    // Navigate outside try-catch to avoid router redirect being caught as error
+    if (currentRole === "vendor" || currentRole === "rider") {
+      window.location.href = `/pending-approval?role=${currentRole === "vendor" ? "partner" : "rider"}`;
+      return;
+    }
+    
+    toast.success("Account created!", {
+      description: "Check your email and click the confirmation link to activate your account.",
+    });
+    window.location.href = "/login";
+    
+  } catch (err: any) {
+    toast.error("Account Creation Failed", {
+      description: err?.message || err?.error_description || "Unexpected error. Please try again.",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const stepLabels = ["Profile", "Details"];
 

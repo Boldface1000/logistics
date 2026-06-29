@@ -37,7 +37,7 @@ function StandardBookingPage() {
   if (loading)
     return (
       <MobileShell>
-        <PageLoader label="Standard Booking" />
+        <PageLoader label="Standard Booking 🛵" />
       </MobileShell>
     );
 
@@ -82,14 +82,14 @@ function StandardBookingPage() {
 
       if (error) throw error;
 
-      toast.success("Booking confirmed", {
-        description: `Reference ${orderId} — a rider has contacted you.`,
+      toast.success("Booking confirmed ", {
+        description: `Reference ${orderId} — Your rider is on the Way 🎉.`,
       });
       navigate({ to: backTarget(role) });
     } catch (err: any) {
       console.error("Order Persistence Error:", err);
       toast.error("Failed to confirm booking", {
-        description: err.message || "An unexpected error occurred.",
+        description: err.message || "An unexpected error occurred 😕 Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -120,32 +120,32 @@ function StandardBookingPage() {
             placeholder="Full name"
           />
           <Field
-            label="Sender location"
+            label="Sender Location (where is the item coming from?)"
             value={senderLocation}
             onChange={(v) => setSenderLocation(safeText(maxLen(v, 50)))}
-            placeholder="Pickup point"
+            placeholder="Pickup point 📬"
           />
           <Field
-            label="Sender phone number"
+            label="Sender Phone_Number"
             value={senderPhone}
             onChange={(v) => setSenderPhone(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
           />
 
           <Field
-            label="Receiver name"
+            label="Receiver Name"
             value={receiverName}
             onChange={(v) => setReceiverName(nameOnly(maxLen(v, 20)))}
             placeholder="Full name"
           />
           <Field
-            label="Receiver location"
+            label="Receiver Location (where is the item going to?)"
             value={receiverLocation}
             onChange={(v) => setReceiverLocation(safeText(maxLen(v, 50)))}
-            placeholder="Drop-off point"
+            placeholder="Drop-off point 📩"
           />
           <Field
-            label="Receiver phone number"
+            label="Receiver Phone_Number"
             value={receiverPhone}
             onChange={(v) => setReceiverPhone(digitsOnly(maxLen(v, 11)))}
             placeholder="e.g. 080…"
@@ -171,7 +171,7 @@ function StandardBookingPage() {
             label="Item type / description"
             value={item}
             onChange={(v) => setItem(safeText(maxLen(v, 50)))}
-            placeholder="Documents, food, package…"
+            placeholder="Documents, food, package… 📦"
           />
 
           <button
@@ -180,7 +180,7 @@ function StandardBookingPage() {
             className="mt-2 h-12 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
-              "Booking your Order…"
+              "Booking your Order… "
             ) : (
               <>
                 Confirm Booking <ArrowRight className="h-4 w-4" />{" "}

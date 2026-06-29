@@ -1,5 +1,5 @@
 {
-  "name": "easybluelogistics",
+  "name": "easyblue-logistics",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name=easybluelogistics"
+    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name=easybluelogistics",
+    "launch": "npx supabase gen types typescript --project-id tlezctbfazokshhjppdk > src/types/database.types.ts && npm run build && wrangler pages deploy dist --project-name=easybluelogistics"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
