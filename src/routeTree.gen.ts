@@ -17,7 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthenticatedVendorDashboardRouteImport } from './routes/_authenticated/vendor-dashboard'
 import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
@@ -70,10 +70,10 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/auth/reset-password',
@@ -144,7 +144,7 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -166,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -185,10 +186,10 @@ export interface FileRoutesByTo {
   '/stocks': typeof AuthenticatedStocksRoute
   '/vendor-dashboard': typeof AuthenticatedVendorDashboardRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/callback': typeof CallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -209,7 +210,6 @@ export interface FileRoutesById {
   '/_authenticated/stocks': typeof AuthenticatedStocksRoute
   '/_authenticated/vendor-dashboard': typeof AuthenticatedVendorDashboardRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -236,6 +236,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/callback'
     | '/forgot-password'
     | '/login'
@@ -255,9 +256,9 @@ export interface FileRouteTypes {
     | '/stocks'
     | '/vendor-dashboard'
     | '/auth/reset-password'
-    | '/'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
     | '/callback'
     | '/forgot-password'
@@ -278,10 +279,10 @@ export interface FileRouteTypes {
     | '/_authenticated/stocks'
     | '/_authenticated/vendor-dashboard'
     | '/auth/reset-password'
-    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   CallbackRoute: typeof CallbackRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -351,12 +352,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/reset-password': {
       id: '/auth/reset-password'
@@ -457,7 +458,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStandardBookingRoute: typeof AuthenticatedStandardBookingRoute
   AuthenticatedStocksRoute: typeof AuthenticatedStocksRoute
   AuthenticatedVendorDashboardRoute: typeof AuthenticatedVendorDashboardRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -472,13 +472,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStandardBookingRoute: AuthenticatedStandardBookingRoute,
   AuthenticatedStocksRoute: AuthenticatedStocksRoute,
   AuthenticatedVendorDashboardRoute: AuthenticatedVendorDashboardRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   CallbackRoute: CallbackRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,

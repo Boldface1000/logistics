@@ -14,6 +14,7 @@ import {
 import {
   ArrowLeft,
   Users,
+  MapPin,
   Truck,
   Package,
   CheckCircle2,
@@ -38,6 +39,7 @@ import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { AdminChatDialog } from "@/components/admin/AdminChatDialog";
 import { AdminUsersDialog } from "@/components/admin/AdminUsersDialog";
 import { AdminQrShareDialog } from "@/components/admin/AdminQrShareDialog";
@@ -74,10 +76,9 @@ interface PendingUser {
 }
 
 interface RealOrder {
-  type: ReactNode;
   id: string;
   item_description: string;
-  order_type: string | null;
+  park_name: string | null;
   status:
     | "pending"
     | "assigned"
@@ -101,6 +102,14 @@ interface RealOrder {
     users: { first_name: string; last_name: string } | null;
   } | null;
   customer: { first_name: string | null; last_name: string | null; phone: string | null } | null;
+  order_items: {
+    id: string;
+    quantity: number;
+    product: {
+      name: string;
+      vendor: { registered_business_name: string } | null;
+    } | null;
+  }[];
 }
 interface RealRider {
   id: string;
@@ -170,13 +179,37 @@ function AdminPage() {
 
   // Handle live database status mutation pipelines with dual public + auth sync hooks
   const approveMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
-      const { error: publicError } = await supabase
-        .from("users")
+  mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
+    // 1. Always update users.approval
+    const { error: userErr } = await supabase
+      .from("users")
+      .update({ approval: status })
+      .eq("id", id);
+    if (userErr) throw userErr;
+
+    // 2. Fetch this user's role so we know which subsidiary table to sync
+    const { data: user, error: roleErr } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", id)
+      .single();
+    if (roleErr) throw roleErr;
+
+    // 3. Mirror approval into riders or vendors table
+    if (user.role === "rider") {
+      const { error } = await supabase
+        .from("riders")
         .update({ approval: status })
-        .eq("id", id);
-      if (publicError) throw publicError;
-    },
+        .eq("user_id", id);
+      if (error) throw error;
+    } else if (user.role === "vendor") {
+      const { error } = await supabase
+        .from("vendors")
+        .update({ approval: status })
+        .eq("user_id", id);
+      if (error) throw error;
+    }
+  },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-approvals"] });
       toast.success("User operational security clear state updated");
@@ -186,43 +219,74 @@ function AdminPage() {
     },
   });
 
-  // Fetch active orders (pending + assigned + accepted + in_transit)
+  const { data: userCounts }= useQuery({
+    queryKey: ["admin-user-role-counts"],
+    queryFn: async () => {
+      const [{ count:customers }, { count: vendors }, { count: riders }] = await Promise.all([
+        supabase.from("users").select("*", {count: "exact", head: true}).eq("role", "customer"),
+        supabase.from("users").select("*", {count: "exact", head: true}).eq("role", "vendor"),
+        supabase.from("users").select("*", {count: "exact", head: true}).eq("role", "rider"),
+      ]);
+      return { customers: customers ?? 0, vendors: vendors ?? 0, riders: riders ?? 0};
+    },
+  });
+
+  const { data: totalOrdersCount = 0 } = useQuery({
+    queryKey: ["admin-total-orders-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("orders").select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  // Fetch all orders with relations for admin operations
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select(
-          `
-        id,
-        item_description,
-        status,
-        sender_name,
-        sender_phone,
-        sender_location,
-        receiver_name,
-        receiver_phone,
-        receiver_location,
-        payment_mode,
-        assigned_rider_id,
-        rider:riders!orders_assigned_rider_id_fkey (
+        .select(`
           id,
-          user_id,
-          users!riders_user_id_fkey (
+          item_description,
+          park_name,
+          status,
+          sender_name,
+          sender_phone,
+          sender_location,
+          receiver_name,
+          receiver_phone,
+          receiver_location,
+          payment_mode,
+          assigned_rider_id,
+          created_at,
+          customer:customer_id (
+            id,
             first_name,
-            last_name
+            last_name,
+            phone
+          ),
+          rider:assigned_rider_id (
+            id,
+            user_id,
+            users:users!riders_user_id_fkey (
+              first_name,
+              last_name
+            )
+          ),
+          order_items (
+            id,
+            quantity,
+            product:product_id (
+              name,
+              vendor:vendor_id (
+                id,
+                registered_business_name
+              )
+            )
           )
-        ),
-        customer:users!orders_customer_id_fkey (
-          first_name,
-          last_name,
-          phone
-        )
-      `,
-        )
-        .in("status", ["pending", "assigned", "accepted", "in_transit"])
+        `)
         .order("created_at", { ascending: false });
-
       if (error) throw error;
       return (data ?? []) as RealOrder[];
     },
@@ -291,7 +355,7 @@ function AdminPage() {
   });
 
   // Update the loading guard to include ordersLoading
-  if (profileLoading || pendingLoading || ordersLoading) {
+  if (profileLoading || pendingLoading) {
     return (
       <MobileShell>
         <PageLoader label="Validating Security Context..." />
@@ -329,6 +393,8 @@ function AdminPage() {
         onAdvanceOrder={(orderId, nextStatus) =>
           advanceOrderMutation.mutate({ orderId, nextStatus })
         }
+        userCounts={userCounts}
+        totalOrdersCount={totalOrdersCount}
       />
     </MobileShell>
   );
@@ -345,6 +411,8 @@ function ScopeShell({
   onUpdateStatus,
   onAssignRider,
   onAdvanceOrder,
+  userCounts,
+  totalOrdersCount,
 }: {
   scope: AdminScope;
   user: { id: string; first_name: string; role: string; full_name: string };
@@ -354,6 +422,8 @@ function ScopeShell({
   onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
   onAssignRider: (orderId: string, riderId: string) => void;
   onAdvanceOrder: (orderId: string, nextStatus: "in_transit" | "delivered") => void;
+  userCounts?: { customers: number; vendors: number; riders: number };
+  totalOrdersCount?: number;
 }) {
   const [tab, setTab] = useState<string>("home");
 
@@ -372,7 +442,7 @@ function ScopeShell({
     logistics: [
       { id: "home", label: "Home", icon: <Home className="h-[22px] w-[22px]" /> },
       {
-        id: "inbox",
+        id: "users",
         label: "Inbox",
         icon: <Inbox className="h-[22px] w-[22px]" />,
         badge: orders.filter((o) => o.status === "pending").length,
@@ -392,12 +462,10 @@ function ScopeShell({
         style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
       >
         <div className="flex items-center justify-between">
-          <Link
-            to="/"
-            className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center"
-          >
-            <ArrowLeft className="h-4 w-4 text-primary-foreground" />
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold mt-3">Hello, {user.first_name}</h1>
+            <p className="text-sm opacity-80">{title} ·Administrative Ecosystem</p>
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
@@ -405,24 +473,24 @@ function ScopeShell({
             </span>
           </div>
         </div>
-        <h1 className="text-2xl font-bold mt-3">Hello, {user.first_name}</h1>
-        <p className="text-sm opacity-80">{title} · Dashboard Ecosystem</p>
       </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pt-4">
         {scope === "super" && (
           <SuperScope
             tab={tab}
-            user={user} // FIXED: Injected derived validated account user data downwards
+            user={user}
             pendingList={pendingList}
             onUpdateStatus={onUpdateStatus}
             ordersList={orders}
+            userCounts={userCounts}
+            totalOrdersCount={totalOrdersCount}
           />
         )}
         {scope === "logistics" && (
           <LogisticsScope
             tab={tab}
-            user={user} // FIXED: Injected derived validated account user data downwards
+            user={user}
             orders={orders}
             riders={riders}
             onAssign={onAssignRider}
@@ -468,12 +536,16 @@ function SuperScope({
   pendingList,
   onUpdateStatus,
   ordersList,
+  userCounts,
+  totalOrdersCount,
 }: {
   tab: string;
   user: { id: string; first_name: string; role: string; full_name: string };
   pendingList: PendingUser[];
   onUpdateStatus: (id: string, status: "approved" | "rejected") => void;
   ordersList: RealOrder[];
+  userCounts?: {customers: number; vendors: number; riders: number};
+  totalOrdersCount?: number;
 }) {
   if (tab === "users") {
     return <ProfileApprovals list={pendingList} onUpdateStatus={onUpdateStatus} />;
@@ -484,52 +556,68 @@ function SuperScope({
   if (tab === "settings") {
     return <SignOutComponent user={user} />;
   }
-  return <SuperHome pendingList={pendingList} ordersList={ordersList} />;
+  return <SuperHome pendingList={pendingList} ordersList={ordersList} userCounts={userCounts} totalOrdersCount={totalOrdersCount} />;
 }
 
-function SuperHome({
-  pendingList,
-  ordersList,
-}: {
+function SuperHome({ pendingList, ordersList, userCounts, totalOrdersCount }: {
   pendingList: PendingUser[];
   ordersList: RealOrder[];
+  userCounts?: {customers: number; vendors: number; riders: number};
+  totalOrdersCount?: number;
+
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-
+  
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["admin-unread-messages"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("support_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("sender_is_admin", false)
+        .is("read_at", null);
+      return count ?? 0;
+    },
+  });
+  
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">Operational Controllers</h3>
-        <DarkModeToggle />
-      </div>
+      <div className="space-y-3">
+      ...
       <div className="grid grid-cols-3 gap-2">
         {[
           {
-            label: "Comms",
+            label: "Live Chat",
             icon: <MessageSquare className="h-5 w-5" />,
             onClick: () => setChatOpen(true),
             tone: "bg-amber-500/10 text-amber-500",
+            badge: unreadCount,
           },
           {
             label: "Directory",
             icon: <Users className="h-5 w-5" />,
             onClick: () => setUsersOpen(true),
             tone: "bg-blue-500/10 text-blue-500",
+            badge: 0,
           },
           {
             label: "Gateway",
             icon: <Share2 className="h-5 w-5" />,
             onClick: () => setShareOpen(true),
             tone: "bg-emerald-500/10 text-emerald-500",
+            badge: 0,
           },
         ].map((a) => (
           <button
             key={a.label}
             onClick={a.onClick}
-            className="p-3 rounded-2xl bg-card border border-border flex flex-col items-center gap-2 active:scale-95"
+            className="relative p-3 rounded-2xl bg-card border border-border flex flex-col items-center gap-2 active:scale-95"
           >
+            {a.badge > 0 && (
+              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+            )}
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${a.tone}`}>
               {a.icon}
             </div>
@@ -539,7 +627,10 @@ function SuperHome({
       </div>
 
       <KPI label="Pending Signups" val={String(pendingList.length)} tone="cta" />
-      <KPI label="Active Shipments" val={String(ordersList.length)} tone="primary" />
+<KPI label="Active Shipments" val={String(ordersList.filter((o) => o.status !== "delivered").length)} tone="primary" />
+<KPI label="Customers" val={String(userCounts?.customers ?? 0)} tone="primary" />
+<KPI label="Vendors" val={String(userCounts?.vendors ?? 0)} tone="cta" />
+<KPI label="Riders" val={String(userCounts?.riders ?? 0)} tone="primary" />
 
       <AdminChatDialog open={chatOpen} onOpenChange={setChatOpen} />
       <AdminUsersDialog open={usersOpen} onOpenChange={setUsersOpen} />
@@ -553,7 +644,7 @@ function SuperStats({
   ordersList,
 }: {
   pendingList: PendingUser[];
-  ordersList: RealOrder[]; // ← was MockOrder[]
+  ordersList: RealOrder[];
 }) {
   const completedDeliveries = ordersList.filter((o) => o.status === "delivered").length;
 
@@ -707,28 +798,29 @@ function LogisticsScope({
 }) {
   const [picks, setPicks] = useState<Record<string, string>>({});
 
+  if (tab === "home") return <LogisticsHome orders={orders} riders={riders} />;
   if (tab === "telemetry") return <LogisticsTelemetry />;
-  if (tab === "catalog") {
-    return (
-      <div className="space-y-4">
-        <Link
-          to="/admin-vendors"
-          className="block p-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-between active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <Store className="h-5 w-5" />
-            <span>Manage Vendor Stocks</span>
-          </div>
-          <span>→</span>
-        </Link>
-        <ProductCatalog />
-      </div>
-    );
-  }
   if (tab === "settings") return <SignOutComponent user={user} />;
 
+  // Default to users/inbox tab - show pending and assigned orders
   const inboundOrders = orders.filter((o) => o.status === "pending" || o.status === "assigned");
   const activeOrders = orders.filter((o) => o.status === "accepted" || o.status === "in_transit");
+
+  const getOrderType = (o: RealOrder) => {
+    const vendorItem = o.order_items?.find((it) => it.product?.vendor);
+    if (vendorItem) {
+      return {
+        label: vendorItem.product?.vendor?.registered_business_name
+          ? `Vendor • ${vendorItem.product.vendor.registered_business_name}`
+          : "Vendor Booking",
+        tone: "bg-purple-500/10 text-purple-500",
+      };
+    }
+    if (o.park_name) {
+      return { label: "Park Waybill", tone: "bg-amber-500/10 text-amber-500" };
+    }
+    return { label: "Customer Booking", tone: "bg-blue-500/10 text-blue-500" };
+  };
 
   return (
     <div className="space-y-6">
@@ -740,12 +832,14 @@ function LogisticsScope({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {inboundOrders.map((o) => (
+            {inboundOrders.map((o) => {
+              const orderType = getOrderType(o);
+              return (
               <div key={o.id} className="p-4 rounded-2xl bg-card border border-border space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-foreground">{o.item_description}</p>
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-secondary text-foreground">
-                    {o.type}
+                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${orderType.tone}`}>
+                    {orderType.label}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-mono">{o.id} · Route Gate</p>
@@ -778,7 +872,8 @@ function LogisticsScope({
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -830,197 +925,233 @@ function LogisticsScope({
   );
 }
 
+function LogisticsHome({ orders, riders }: { orders: RealOrder[]; riders: RealRider[] }) { 
+  const pending = orders.filter((o) => o.status === "pending").length;
+  const inTransit = orders.filter((o) => o.status ==="in_transit").length;
+  const delivered = orders.filter((o) => o.status === "delivered").length;
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-bold text-foreground">Operations Overview</h3>
+      <div className="grid grid-cols-2 gap-2.5">
+        < KPI label="Awaiting Dispatch" val={String(pending)} tone="cta"/>
+        < KPI label="In Transit" val={String(inTransit)} tone="primary"/>
+        < KPI label="Delivered" val={String(delivered)} tone="primary"/>
+        < KPI label="Available Riders" val={String(riders.length)} tone="cta"/>
+      </div>
+    </div>
+  )
+}
+
 function LogisticsTelemetry() {
-  const [events, setEvents] = useState<
-    {
-      id: number;
-      ts: string;
-      shipment_id: string;
-      lat: string;
-      lng: string;
-      speed_kph: string | null;
-    }[]
-  >([]);
+  const [orders, setOrders] = useState<RealOrder[]>([]);
+  const [selected, setSelected] = useState<RealOrder | null>(null);
+  const [lastPings, setLastPings] = useState<Record<string, { lat: string; lng: string; ts: string }>>({});
   const [connected, setConnected] = useState(false);
 
+  // 1. Load active orders (non-delivered, non-pending) on mount
   useEffect(() => {
-    // 1. Load the last 15 events on mount
     supabase
-      .from("telemetry_events")
-      .select("id, shipment_id, lat, lng, speed_kph, recorded_at")
-      .order("recorded_at", { ascending: false })
-      .limit(15)
-      .then(({ data }) => {
-        if (data) {
-          setEvents(
-            data.map((e) => ({
-              id: e.id,
-              ts: new Date(e.recorded_at).toLocaleTimeString(),
-              shipment_id: e.shipment_id,
-              lat: String(e.lat),
-              lng: String(e.lng),
-              speed_kph: e.speed_kph ? String(e.speed_kph) : null,
-            })),
-          );
-        }
-      });
+      .from("orders")
+      .select(`
+        id, item_description, status, park_name,
+        sender_location, receiver_location,
+        rider:assigned_rider_id (
+          id,
+          users:users!riders_user_id_fkey (first_name, last_name)
+        ),
+        customer:customer_id (first_name, last_name),
+        order_items (
+          id,
+          quantity,
+          product:product_id (
+            name,
+            vendor:vendor_id (registered_business_name)
+          )
+        )
+      `)
+      .in("status", ["assigned", "accepted", "in_transit", "out_for_delivery"])
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { if (data) setOrders(data as any); });
 
-    // 2. Subscribe to new inserts in real time
-    const channel = supabase
-      .channel("telemetry-live")
-      .on(
-        "postgres_changes",
+    // 2. Subscribe to order status changes
+    const orderChannel = supabase
+      .channel("telemetry-order-updates")
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        () => {
+          supabase
+            .from("orders")
+            .select(`id, item_description, status, park_name, sender_location, receiver_location,
+              rider:assigned_rider_id (id, users:users!riders_user_id_fkey (first_name, last_name)),
+              customer:customer_id (first_name, last_name),
+              order_items (
+                id,
+                quantity,
+                product:product_id (
+                  name,
+                  vendor:vendor_id (registered_business_name)
+                )
+              )`)
+            .in("status", ["assigned", "accepted", "in_transit", "out_for_delivery"])
+            .order("created_at", { ascending: false })
+            .then(({ data }) => { if (data) setOrders(data as any); });
+        }
+      )
+      .subscribe((status) => setConnected(status === "SUBSCRIBED"));
+
+    // 3. Subscribe to GPS pings — update last known position per order
+    const pingChannel = supabase
+      .channel("telemetry-pings")
+      .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "telemetry_events" },
         (payload) => {
-          const e = payload.new as {
-            id: number;
-            shipment_id: string;
-            lat: number;
-            lng: number;
-            speed_kph: number | null;
-            recorded_at: string;
-          };
-          setEvents((prev: any) =>
-            [
-              {
-                id: e.id,
-                ts: new Date(e.recorded_at).toLocaleTimeString(),
-                shipment_id: e.shipment_id,
-                lat: String(e.lat),
-                lng: String(e.lng),
-                speed_kph: e.speed_kph ? String(e.speed_kph) : null,
-              },
-              ...prev,
-            ].slice(0, 15),
-          );
-        },
+          const e = payload.new as any;
+          setLastPings((prev) => ({
+            ...prev,
+            [e.shipment_id]: {
+              lat: String(e.lat),
+              lng: String(e.lng),
+              ts: new Date(e.recorded_at).toLocaleTimeString(),
+            },
+          }));
+        }
       )
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(orderChannel);
+      supabase.removeChannel(pingChannel);
     };
   }, []);
 
-  return (
-    <div className="space-y-3">
-      <div className="relative h-44 rounded-2xl border border-border bg-gradient-to-br from-slate-900 to-indigo-950 flex items-center justify-center overflow-hidden">
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded-lg backdrop-blur-md">
-          <Activity
-            className={`h-3 w-3 ${connected ? "text-emerald-400 animate-pulse" : "text-red-400"}`}
-          />
-          <span className="text-[10px] font-mono text-white">
-            {connected ? "Stream: Live Socket Connection" : "Stream: Connecting..."}
-          </span>
-        </div>
-        {events[0] && (
-          <div className="text-center">
-            <p className="text-white/60 text-[10px] font-mono">Last ping</p>
-            <p className="text-white font-mono text-sm font-bold">
-              {events[0].lat}, {events[0].lng}
-            </p>
-            {events[0].speed_kph && (
-              <p className="text-emerald-400 text-[10px] font-mono mt-1">
-                {events[0].speed_kph} km/h
-              </p>
-            )}
-          </div>
-        )}
-        {!events[0] && <BarChart3 className="h-12 w-12 text-white/10" />}
-      </div>
+  const getOrderType = (o: RealOrder) => {
+    const vendorItem = o.order_items?.find((it) => it.product?.vendor);
+    if (vendorItem) {
+      return vendorItem.product?.vendor?.registered_business_name
+        ? `Vendor • ${vendorItem.product.vendor.registered_business_name}`
+        : "Vendor Booking";
+    }
+    if (o.park_name) return "Park Waybill";
+    return "Customer Booking";
+  };
 
-      <h3 className="text-sm font-bold text-foreground">Telemetry Event Log</h3>
-      <div className="rounded-2xl bg-card border border-border p-2 max-h-[260px] overflow-y-auto font-mono text-[10px] space-y-1.5">
-        {events.length === 0 && (
-          <p className="text-muted-foreground text-center py-4">Awaiting telemetry events...</p>
-        )}
-        {events.map(
-          (e: {
-            id: Key | null | undefined;
-            ts:
-              | string
-              | number
-              | bigint
-              | boolean
-              | ReactElement<unknown, string | JSXElementConstructor<any>>
-              | Iterable<ReactNode>
-              | ReactPortal
-              | Promise<
-                  | string
-                  | number
-                  | bigint
-                  | boolean
-                  | ReactPortal
-                  | ReactElement<unknown, string | JSXElementConstructor<any>>
-                  | Iterable<ReactNode>
-                  | null
-                  | undefined
-                >
-              | null
-              | undefined;
-            lat:
-              | string
-              | number
-              | bigint
-              | boolean
-              | ReactElement<unknown, string | JSXElementConstructor<any>>
-              | Iterable<ReactNode>
-              | ReactPortal
-              | Promise<
-                  | string
-                  | number
-                  | bigint
-                  | boolean
-                  | ReactPortal
-                  | ReactElement<unknown, string | JSXElementConstructor<any>>
-                  | Iterable<ReactNode>
-                  | null
-                  | undefined
-                >
-              | null
-              | undefined;
-            lng:
-              | string
-              | number
-              | bigint
-              | boolean
-              | ReactElement<unknown, string | JSXElementConstructor<any>>
-              | Iterable<ReactNode>
-              | ReactPortal
-              | Promise<
-                  | string
-                  | number
-                  | bigint
-                  | boolean
-                  | ReactPortal
-                  | ReactElement<unknown, string | JSXElementConstructor<any>>
-                  | Iterable<ReactNode>
-                  | null
-                  | undefined
-                >
-              | null
-              | undefined;
-            speed_kph: any;
-            shipment_id: string | any[];
-          }) => (
-            <div key={e.id} className="pb-1.5 border-b border-border/40 last:border-0">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{e.ts}</span>
-                <span className="px-1.5 rounded bg-primary/10 text-primary font-bold">
-                  geo.ping
-                </span>
-              </div>
-              <p className="text-foreground truncate mt-0.5">
-                lat={e.lat} lng={e.lng}
-                {e.speed_kph ? ` speed=${e.speed_kph}kph` : ""} shipment=
-                {e.shipment_id.slice(0, 8)}...
+  const statusColor: Record<string, string> = {
+    assigned: "bg-amber-500/10 text-amber-500",
+    accepted: "bg-blue-500/10 text-blue-500",
+    in_transit: "bg-primary/10 text-primary",
+    out_for_delivery: "bg-emerald-500/10 text-emerald-500",
+  };
+
+  if (selected) {
+    const ping = lastPings[selected.id];
+    return (
+      <div className="space-y-3">
+        <button
+          onClick={() => setSelected(null)}
+          className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to list
+        </button>
+
+        <div className="p-4 rounded-2xl bg-card border border-border space-y-2">
+          <p className="text-sm font-bold text-foreground">{selected.item_description}</p>
+          <p className="text-xs text-muted-foreground">
+            {getOrderType(selected)} ·{" "}
+            <span className={`font-bold ${statusColor[selected.status] ?? ""}`}>
+              {selected.status.replace("_", " ")}
+            </span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Origin: {selected.sender_location}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Destination: {selected.receiver_location}
+          </p>
+          {ping && (
+            <p className="text-xs text-emerald-500 font-mono">
+              Last ping: {ping.lat}, {ping.lng} at {ping.ts}
+            </p>
+          )}
+        </div>
+
+        {/* Map — OpenStreetMap iframe, no API key needed */}
+        {ping ? (
+          <iframe
+            title="Live position"
+            className="w-full h-56 rounded-2xl border border-border"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+              Number(ping.lng) - 0.01
+            },${Number(ping.lat) - 0.01},${Number(ping.lng) + 0.01},${
+              Number(ping.lat) + 0.01
+            }&layer=mapnik&marker=${ping.lat},${ping.lng}`}
+          />
+        ) : (
+          <div className="h-56 rounded-2xl bg-card border border-border flex items-center justify-center">
+            <div className="text-center">
+              <MapPin className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">
+                No GPS ping yet for this shipment.
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Route: {selected.sender_location} → {selected.receiver_location}
               </p>
             </div>
-          ),
+          </div>
         )}
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Live status bar */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border">
+        <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500 animate-pulse" : "bg-red-400"}`} />
+        <span className="text-[10px] font-mono text-muted-foreground">
+          {connected ? "Stream: Live Socket Connection" : "Stream: Connecting..."}
+        </span>
+        <span className="ml-auto text-[10px] font-bold text-foreground">{orders.length} active</span>
+      </div>
+
+      {/* Filter tabs by delivery type */}
+      {orders.length === 0 ? (
+        <div className="text-center py-10 text-xs text-muted-foreground rounded-2xl bg-card border border-border">
+          No active shipments in transit.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {orders.map((o) => {
+            const ping = lastPings[o.id];
+            const rider = (o.rider as any)?.users;
+            return (
+              <button
+                key={o.id}
+                onClick={() => setSelected(o)}
+                className="w-full p-3 rounded-2xl bg-card border border-border text-left active:scale-[0.99] space-y-1.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-foreground truncate">{o.item_description}</p>
+                  <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${statusColor[o.status] ?? "bg-muted text-muted-foreground"}`}>
+                    {o.status.replace("_", " ")}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {getOrderType(o)} ·{" "}
+                  {rider ? `${rider.first_name} ${rider.last_name}` : "Unassigned"}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {o.sender_location} → {o.receiver_location}
+                </p>
+                {ping && (
+                  <p className="text-[10px] text-emerald-500 font-mono">
+                    Last ping {ping.ts} · {ping.lat}, {ping.lng}
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1149,23 +1280,6 @@ function KPI({ label, val, tone }: { label: string; val: string; tone: "cta" | "
 function SignOutComponent({ user }: { user: { id: string; role: string; full_name: string } }) {
   const navigate = useNavigate();
   const [isSignOutPending, setIsSignOutPending] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: any) => { e.preventDefault(); setInstallPrompt(e); };
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", () => setInstalled(true));
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") setInstalled(true);
-    setInstallPrompt(null);
-  };
 
   const handleSignOut = async () => {
     setIsSignOutPending(true);
@@ -1185,64 +1299,41 @@ function SignOutComponent({ user }: { user: { id: string; role: string; full_nam
   };
 
   return (
-    <div className="space-y-3">
-      {/* Profile card */}
-      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-foreground">{user.full_name}</p>
-          <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">
-            {user.role} Authorization Node
-          </p>
-        </div>
-        <button
-          onClick={handleSignOut}
-          disabled={isSignOutPending}
-          className="h-10 px-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 text-sm font-semibold transition hover:bg-red-500/20 disabled:opacity-50 active:scale-[0.98]"
-        >
-          {isSignOutPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-          Disconnect
-        </button>
+  <div className="space-y-3">
+    <InstallAppBanner />
+
+    {/* History */}
+    <button
+      onClick={() => navigate({ to: "/history" })}
+      className="w-full p-4 rounded-2xl bg-card border border-border flex items-center justify-between active:scale-[0.99]"
+    >
+      <div className="text-left">
+        <p className="text-sm font-semibold text-foreground">Transaction History</p>
+        <p className="text-[11px] text-muted-foreground">View all order logs</p>
       </div>
+      <span className="text-muted-foreground text-lg">→</span>
+    </button>
 
-      {/* Dark mode */}
-      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Appearance</p>
-          <p className="text-[11px] text-muted-foreground">Toggle light / dark mode</p>
-        </div>
-        <DarkModeToggle size="md" />
-      </div>
-
-      {/* History */}
-      <button
-        onClick={() => navigate({ to: "/history" })}
-        className="w-full p-4 rounded-2xl bg-card border border-border flex items-center justify-between active:scale-[0.99]"
-      >
-        <div className="text-left">
-          <p className="text-sm font-semibold text-foreground">Transaction History</p>
-          <p className="text-[11px] text-muted-foreground">View all order logs</p>
-        </div>
-        <span className="text-muted-foreground text-lg">→</span>
-      </button>
-
-      {/* Install */}
-      {!installed && installPrompt && (
-        <button
-          onClick={handleInstall}
-          className="w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between active:scale-[0.99]"
-        >
-          <div className="text-left">
-            <p className="text-sm font-semibold text-foreground">Install App</p>
-            <p className="text-[11px] text-muted-foreground">Add EasyBlue to your home screen</p>
-          </div>
-          <span className="text-primary font-bold text-sm">Install</span>
-        </button>
-      )}
-      {installed && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center text-sm font-semibold text-emerald-500">
-          App installed ✓
-        </div>
-      )}
+    {/* Dark mode */}
+    <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
+      <p className="text-sm font-semibold text-foreground">Toggle Light / Dark Mode</p>
+      <DarkModeToggle size="md" />
     </div>
-  );
+
+    {/* Log Out — styled consistently with the rest */}
+    <button
+      onClick={handleSignOut}
+      disabled={isSignOutPending}
+      className="w-full p-4 rounded-2xl bg-card border border-border flex items-center justify-between active:scale-[0.99] disabled:opacity-50"
+    >
+      <div className="text-left">
+        <p className="text-sm font-semibold text-red-500">Log Out</p>
+        <p className="text-[11px] text-muted-foreground">End your admin session</p>
+      </div>
+      {isSignOutPending
+        ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        : <LogOut className="h-4 w-4 text-red-500" />}
+    </button>
+  </div>
+);
 }

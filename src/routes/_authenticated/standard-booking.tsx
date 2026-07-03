@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Bike, ArrowRight, MapPinCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -11,12 +11,19 @@ import { safeText, digitsOnly, nameOnly, maxLen } from "@/lib/validators";
 
 export const Route = createFileRoute("/_authenticated/standard-booking")({
   head: () => ({ meta: [{ title: "Standard Booking — EasyBlue Logistics" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    type:
+      search.type === "inter_state" || search.type === "intra_state"
+        ? (search.type as "intra_state" | "inter_state")
+        : "intra_state",
+  }),
   component: StandardBookingPage,
 });
 
 function StandardBookingPage() {
   const loading = useArtificialLoading(450);
   const navigate = useNavigate();
+  const { type: orderType } = useSearch({ from: "/_authenticated/standard-booking" });
   const [role, setRole] = useState<string | null>(null);
   useEffect(() => {
     auth.current().then((u) => setRole(u?.role ?? null));
@@ -81,6 +88,15 @@ function StandardBookingPage() {
       });
 
       if (error) throw error;
+
+      // Pass the delivery type that was selected on this screen
+      // (orderType comes from the `type` search param set by the dashboard nav)
+      if (orderId) {
+        await supabase
+          .from("orders")
+          .update({ order_type: orderType })
+          .eq("id", orderId);
+      }
 
       toast.success("Booking confirmed ", {
         description: `Reference ${orderId} — Your rider is on the Way 🎉.`,

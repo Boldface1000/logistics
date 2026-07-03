@@ -3,7 +3,7 @@ import { Share2, Copy } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 
-const SHARE_URL = "https://easybluelogistics.com";
+const SHARE_URL = "https://easybluelogisticspages.dev";
 
 export function AdminQrShareDialog({
   open,

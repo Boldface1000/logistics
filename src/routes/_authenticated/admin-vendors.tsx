@@ -13,17 +13,18 @@ import {
   Calendar,
   Package,
   Loader2,
-  LogOut, History, Download
+  LogOut, History
 } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 import { supabase } from "@/integrations/client";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
-import { useEffect, useState } from "react";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin-vendors")({
-  head: () => ({ meta: [{ title: "Approved Vendors — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Operations — EasyBlue Logistics" }] }),
   component: AdminVendorsPage,
 });
 
@@ -83,10 +84,8 @@ function AdminVendorsPage() {
       <div className="p-4 flex flex-col gap-4 min-h-screen pb-24 bg-background">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate({ to: "/admin" })}
             className="h-10 w-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground"
           >
-            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <h1 className="text-xl font-bold text-foreground">Operations</h1>
@@ -148,7 +147,6 @@ function AdminVendorsPage() {
             onClose={() => setOpenVendor(null)}
           />
         )}
-      <VendorPageSettings navigate={navigate} />
       </div>
     </MobileShell>
   );
@@ -500,38 +498,14 @@ function StockSubForm({
 }
 
 function VendorPageSettings({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: any) => { e.preventDefault(); setInstallPrompt(e); };
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", () => setInstalled(true));
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") setInstalled(true);
-    setInstallPrompt(null);
-  };
-
   return (
     <div className="space-y-3 mt-6 pb-6">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
         Settings
       </h3>
 
-      {/* Dark mode */}
-      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Appearance</p>
-          <p className="text-[11px] text-muted-foreground">Toggle light / dark mode</p>
-        </div>
-        <DarkModeToggle size="md" />
-      </div>
+      {/* Persistent install banner (iOS + Android) */}
+      <InstallAppBanner />
 
       {/* History */}
       <button
@@ -550,29 +524,14 @@ function VendorPageSettings({ navigate }: { navigate: ReturnType<typeof useNavig
         <span className="text-muted-foreground">→</span>
       </button>
 
-      {/* Install */}
-      {!installed && installPrompt && (
-        <button
-          onClick={handleInstall}
-          className="w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <Download className="h-4 w-4" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">Install App</p>
-              <p className="text-[11px] text-muted-foreground">Add EasyBlue to home screen</p>
-            </div>
-          </div>
-          <span className="text-primary font-bold text-sm">Install</span>
-        </button>
-      )}
-      {installed && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center text-sm font-semibold text-emerald-500">
-          App installed ✓
+      {/* Dark mode */}
+      <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Appearance</p>
+          <p className="text-[11px] text-muted-foreground">Toggle light / dark mode</p>
         </div>
-      )}
+        <DarkModeToggle size="md" />
+      </div>
     </div>
   );
 }

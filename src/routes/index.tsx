@@ -16,7 +16,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { supabase } from "@/integrations/client"; // FIXED: Realigned with project client import path
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "EasyBlue Logistics — Ship Globally, Deliver Locally" },
@@ -86,6 +86,7 @@ function WelcomePage() {
   const [idx, setIdx] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
   const navigate = useNavigate();
+  
 
   // 1. Session Interceptor: Bounce authenticated users straight into the workspace
   useEffect(() => {

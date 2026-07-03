@@ -92,7 +92,11 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
     <MobileShell>
       <main className="flex-1 overflow-y-auto scrollbar-hide bg-background">
         {tab === "home" && (
-          <HomeHero name={displayName} variant={variant} onGo={(to) => navigate({ to })} />
+          <HomeHero
+            name={displayName}
+            variant={variant}
+            onGo={(to, search) => navigate(search ? ({ to, search } as any) : { to })}
+          />
         )}
         {tab === "orders" && <OrdersPanel orders={myOrders} onView={openTracking} />}
         {tab === "tracking" && (
@@ -114,7 +118,7 @@ export function CustomerDashboard({ variant }: { variant: "customer" | "vendor" 
 
       {/* High-End Glassmorphic Bottom Navigation Console */}
       <nav
-        className="mt-auto mx-4 mb-2 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
+        className="shrink-0 mx-4 mb-2 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
                    border border-white/20 dark:border-white/5
                    bg-white/40 dark:bg-black/20 backdrop-blur-2xl
                    shadow-[0_8px_32px_rgba(25,25,112,0.15)]"
@@ -154,12 +158,13 @@ function HomeHero({
 }: {
   name: string;
   variant: "customer" | "vendor";
-  onGo: (to: DashboardHomeNav) => void;
+  onGo: (to: DashboardHomeNav, search?: { type: "intra_state" | "inter_state" }) => void;
 }) {
   const buttons: {
     header: string;
     subheader: string;
     to: DashboardHomeNav;
+    search?: { type: "intra_state" | "inter_state" };
     icon: React.ReactNode;
     accentVar: AccentVar;
   }[] = [
@@ -167,6 +172,7 @@ function HomeHero({
       header: "Intra-State",
       subheader: "Local Delivery",
       to: "/standard-booking",
+      search: { type: "intra_state" },
       icon: <Bike className="h-5 w-5" />,
       accentVar: "amber",
     },
@@ -174,6 +180,7 @@ function HomeHero({
       header: "Inter-State",
       subheader: "Send Items outside the State",
       to: "/standard-booking",
+      search: { type: "inter_state" },
       icon: <Truck className="h-5 w-5" />,
       accentVar: "zinc",
     },
@@ -225,7 +232,7 @@ function HomeHero({
               subheader={b.subheader}
               icon={b.icon}
               accentVar={b.accentVar}
-              onClick={() => onGo(b.to)}
+              onClick={() => onGo(b.to, b.search)}
             />
           ))}
         </div>

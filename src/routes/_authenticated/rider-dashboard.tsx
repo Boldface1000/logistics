@@ -95,6 +95,33 @@ function RiderDashboard() {
     },
   });
 
+  // GPS ping — fires every 30s when rider has an active in_transit order
+  useEffect(() => {
+    const inTransitOrders = myOrders.filter((o) => o.status === "in_transit");
+    if (inTransitOrders.length === 0 || !riderProfile?.id) return;
+
+    const sendPing = () => {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          await supabase.from("telemetry_events").insert({
+            shipment_id: inTransitOrders[0].id,
+            rider_id: riderProfile.id,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            speed_kph: pos.coords.speed ? +(pos.coords.speed * 3.6).toFixed(1) : null,
+          });
+        },
+        undefined,
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    };
+
+    sendPing(); // immediate first ping
+    const interval = setInterval(sendPing, 30_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myOrders.filter((o) => o.status === "in_transit").length, riderProfile?.id]);
+
   if (loading || sessionLoading || profileLoading || riderLoading || ordersLoading) {
     return (
       <MobileShell>
@@ -205,7 +232,7 @@ function RiderDashboard() {
       </main>
 
       <nav
-        className="mt-auto mx-4 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
+        className="shrink-0 mx-4 z-30 flex items-center justify-between gap-1 px-4 py-2 rounded-full
                    border border-white/30 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur-2xl
                    shadow-[0_8px_32px_rgba(25,25,112,0.25)]"
         style={{ marginBottom: `calc(env(safe-area-inset-bottom, 0px) + 6px)` }}

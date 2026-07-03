@@ -61,21 +61,14 @@ export function AdminChatDialog({
       setConvos([]);
       return;
     }
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, display_name, first_name, last_name, email")
-        .in("id", ids),
-      supabase.from("user_roles").select("user_id, role").in("user_id", ids),
-    ]);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, first_name, last_name, email, role")
+      .in("id", ids);
     const out: Convo[] = ids.map((id) => {
       const p = profiles?.find((x) => x.id === id);
-      const rs = (roles ?? []).filter((r) => r.user_id === id).map((r) => r.role as string);
-      const role: Convo["role"] = rs.includes("vendor")
-        ? "vendor"
-        : rs.includes("rider")
-          ? "rider"
-          : "customer";
+      const role: Convo["role"] =
+        p?.role === "vendor" ? "vendor" : p?.role === "rider" ? "rider" : "customer";
       const meta = byUser.get(id)!;
       return {
         user_id: id,
@@ -94,33 +87,66 @@ export function AdminChatDialog({
   useEffect(() => {
     if (!open) return;
     loadConvos();
-    const t = setInterval(loadConvos, 5000);
-    return () => clearInterval(t);
+
+    // Any new message anywhere should refresh the conversation list
+    // (new senders appearing, previews updating, unread counts changing).
+    const channel = supabase
+      .channel("admin-support-conversations")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "support_messages" },
+        () => loadConvos(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [open]);
 
   useEffect(() => {
     if (!active) return;
-    let alive = true;
-    const load = async () => {
-      const { data } = await supabase
-        .from("support_messages")
-        .select("id, body, sender_is_admin, created_at")
-        .eq("conversation_user_id", active.user_id)
-        .order("created_at", { ascending: true });
-      if (alive && data) setMessages(data as Msg[]);
-      // mark customer messages as read
-      await supabase
+
+    const markRead = () =>
+      supabase
         .from("support_messages")
         .update({ read_at: new Date().toISOString() })
         .eq("conversation_user_id", active.user_id)
         .eq("sender_is_admin", false)
         .is("read_at", null);
-    };
-    load();
-    const t = setInterval(load, 5000);
+
+    // 1. Load the thread once on opening it
+    supabase
+      .from("support_messages")
+      .select("id, body, sender_is_admin, created_at")
+      .eq("conversation_user_id", active.user_id)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) setMessages(data as Msg[]);
+        markRead();
+      });
+
+    // 2. Subscribe to new messages in this thread, live
+    const channel = supabase
+      .channel(`admin-support-thread-${active.user_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+          filter: `conversation_user_id=eq.${active.user_id}`,
+        },
+        (payload) => {
+          const m = payload.new as Msg;
+          setMessages((prev) => [...prev, m]);
+          if (!m.sender_is_admin) markRead();
+        },
+      )
+      .subscribe();
+
     return () => {
-      alive = false;
-      clearInterval(t);
+      supabase.removeChannel(channel);
     };
   }, [active]);
 

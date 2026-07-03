@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState} from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Pencil,
@@ -7,11 +7,13 @@ import {
   History as HistoryIcon,
   ChevronRight,
   Check,
-  X,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
-import { profileStore } from "@/lib/profile-store";
-import type { AuthUser } from "@/lib/auth";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/client";
+import { AuthUser } from"@/lib/auth";
+import { blob } from "stream/consumers";
 
 /**
  * Reusable profile header used inside Settings panels for customer, vendor,
@@ -22,18 +24,10 @@ import type { AuthUser } from "@/lib/auth";
  * - History button navigates to /history (a per-role transaction page).
  */
 export function ProfileHeader({ user }: { user: AuthUser | null }) {
-  useSyncExternalStore(
-    (cb) => profileStore.subscribe(cb),
-    () => JSON.stringify(profileStore.get(user?.email ?? "")),
-    () => "{}",
-  );
-
   const [open, setOpen] = useState(false);
-  const override = user ? profileStore.get(user.email) : {};
-  const defaultName = user ? `${user.firstName} ${user.lastName}` : "Guest";
-  const displayName = override.displayName?.trim() || defaultName;
-  const photo = override.photoDataUrl;
-
+  const displayName = user ? `${user.firstName} ${user.lastName}`.trim() : "Guest";
+  const photo = user?.profilePhotoUrl;
+  
   return (
     <div className="relative">
       <div className="rounded-2xl bg-card border border-border p-4 mb-3">
@@ -121,12 +115,47 @@ function EditBubble({
     reader.readAsDataURL(file);
   };
 
-  const save = () => {
-    profileStore.set(user.email, { displayName: name.trim() || initialName, photoDataUrl: photo });
+  const queryClient = useQueryClient();
+
+const saveMutation = useMutation({
+  mutationFn: async () => {
+    let photoUrl = photo;
+    
+    // If a new photo was picked, it'll be a data URL — upload it to storage first
+    if (photo && photo.startsWith("data:")) {
+      const blob = await (await fetch(photo)).blob();
+      const path = `${user.id}/${Date.now()}.jpg`;
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, blob, { upsert: true, contentType: blob.type });
+      if (uploadErr) throw uploadErr;
+      
+      const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(path);
+      photoUrl = publicUrl.publicUrl;
+    }
+    
+    const [firstName, ...rest] = (name.trim() || initialName).split(" ");
+    const { error } = await supabase
+      .from("users")
+      .update({
+        first_name: firstName,
+        last_name: rest.join(" "),
+        profile_photo_url: photoUrl,
+      })
+      .eq("id", user.id);
+    if (error) throw error;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries();
     toast.success("Profile updated");
     onClose();
-  };
+  },
+  onError: (err) => {
+    toast.error(err instanceof Error ? err.message : "Failed to update profile");
+  },
+});
 
+const save = () => saveMutation.mutate();
   return (
     <div
       ref={bubbleRef}

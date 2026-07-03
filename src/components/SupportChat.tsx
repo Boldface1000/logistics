@@ -22,40 +22,54 @@ export function SupportChat() {
   const [unread, setUnread] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
+useEffect(() => {
+  supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+}, []);
 
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    const fetchMsgs = async () => {
-      const { data } = await supabase
-        .from("support_messages")
-        .select("id, body, sender_is_admin, created_at")
-        .eq("conversation_user_id", userId)
-        .order("created_at", { ascending: true });
-      if (!alive || !data) return;
-      setMessages(data as Msg[]);
-      if (!open) {
-        setUnread(
-          data.filter((m) => m.sender_is_admin && !messages.find((x) => x.id === m.id)).length,
-        );
-      }
-    };
-    fetchMsgs();
-    const t = setInterval(fetchMsgs, 5000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, open]);
+useEffect(() => {
+  if (!userId) return;
+  
+  // 1. Load the existing conversation once on mount
+  supabase
+    .from("support_messages")
+    .select("id, body, sender_is_admin, created_at")
+    .eq("conversation_user_id", userId)
+    .order("created_at", { ascending: true })
+    .then(({ data }) => {
+      if (data) setMessages(data as Msg[]);
+    });
+  
+  // 2. Subscribe to new messages in this conversation, live
+  const channel = supabase
+    .channel(`support-chat-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "support_messages",
+        filter: `conversation_user_id=eq.${userId}`,
+      },
+      (payload) => {
+        const m = payload.new as Msg;
+        setMessages((prev) => [...prev, m]);
+        if (m.sender_is_admin) {
+          setUnread((prev) => (open ? 0 : prev + 1));
+        }
+      },
+    )
+    .subscribe();
+  
+  return () => {
+    supabase.removeChannel(channel);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [userId]);
 
-  useEffect(() => {
-    if (open) setUnread(0);
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages, open]);
+useEffect(() => {
+  if (open) setUnread(0);
+  scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+}, [messages, open]);
 
   const send = async () => {
     const body = draft.trim();

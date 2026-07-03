@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -9,6 +8,7 @@ import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { orderQueries } from "@/lib/api-client";
 import type { Tables } from "@/types/database.types";
+import { supabase } from "@/integrations/client";
 
 type Order = Tables<"orders">;
 
@@ -43,28 +43,34 @@ function HistoryPage() {
     orderQueries.byRider(role === "rider" ? userId : undefined),
   );
 
+  const { data: allOrders = [], isLoading: loadingAll } = useQuery(
+    orderQueries.everything(role === "admin"),
+  );
+
   /** Per-role transaction scope (mirrors old ordersStore scoping). */
   const scoped: Order[] = useMemo(() => {
     if (role === "customer") return myOrders;
     if (role === "rider") return riderOrders;
-    if (role === "vendor") return myOrders.filter((o: Order) => o.payment_method === "marketplace");
+    if (role === "vendor") return myOrders;
     // admin sees everything — use mine() with no filter; admin queries handled server-side via RLS
-    return myOrders;
-  }, [role, myOrders, riderOrders]);
+    return allOrders;
+  }, [role, myOrders, riderOrders, allOrders]);
+
+  const delivered = scoped.filter((o) => o.status === "delivered" || o.status === "cancelled");
 
   const filtered = useMemo(() => {
     if (!applied) return [];
     const start = new Date(applied.from + "T00:00:00").getTime();
     const end = new Date(applied.to + "T23:59:59").getTime();
-    return scoped
+    return delivered
       .filter((o) => {
         const t = new Date(o.created_at).getTime();
         return t >= start && t <= end;
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [scoped, applied]);
+  }, [delivered, applied]);
 
-  const isFetching = loadingMine || loadingRider;
+  const isFetching = loadingMine || loadingRider || loadingAll;
 
   if (loading || isFetching) {
     return (

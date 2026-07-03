@@ -1,4 +1,4 @@
-/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Trash2, User as UserIcon, Mail, Phone, Calendar } from "lucide-react";
@@ -15,7 +15,7 @@ interface Row {
   email: string;
   phone: string | null;
   approval: string;
-  is_email_verified: boolean;
+  is_verified: boolean;
   created_at: string;
   disabled_at: string | null;
 }
@@ -33,42 +33,26 @@ export function AdminUsersDialog({
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    setLoading(true);
-    const dbRole = tab === "customer" ? "customer" : tab === "vendor" ? "vendor" : "rider";
-    const { data: roleRows } = await supabase.from("users").select("user_id").eq("role", dbRole);
-    const ids = (roleRows ?? []).map((r) => r.user_id);
-    if (ids.length === 0) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select(
-        "id, first_name, last_name, display_name, email, phone, approval, is_email_verified, created_at, disabled_at",
-      )
-      .in("id", ids)
-      .is("disabled_at", null)
-      .order("created_at", { ascending: false });
-    setRows((profiles ?? []) as Row[]);
-    setLoading(false);
-  };
+  setLoading(true);
+  const { data: profiles, error } = await supabase
+    .from("users")
+    .select("id, first_name, last_name, display_name, email, phone, approval, created_at, is_verified")
+    .eq("role", tab)
+    .order("created_at", { ascending: false });
+  if (error) { toast.error(error.message); setRows([]); setLoading(false); return; }
+  setRows((profiles ?? []) as Row[]);
+  setLoading(false);
+};
 
   useEffect(() => {
     if (open) load(); /* eslint-disable-next-line */
   }, [open, tab]);
 
   const remove = async (id: string) => {
-    if (!confirm("Disable this user? They will need to sign up again.")) return;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ disabled_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("User disabled");
+    if (!confirm("Remove this user's approval? They will lose access.")) return;
+    const { error } = await supabase.from("users").update({ approval: "rejected"}).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("user access revoked");
     setRows((r) => r.filter((x) => x.id !== id));
   };
 
@@ -171,7 +155,7 @@ export function AdminUsersDialog({
               <Field
                 icon={<Mail className="h-4 w-4" />}
                 label="Email verified"
-                value={detail.is_email_verified ? "Yes" : "No"}
+                value={detail.is_verified ? "Yes" : "No"}
               />
               <Field
                 icon={<UserIcon className="h-4 w-4" />}

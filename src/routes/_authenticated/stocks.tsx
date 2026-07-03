@@ -1,36 +1,41 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Package, Calendar, Layers } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
-import { stocksStore } from "@/lib/stocks-store";
+import { supabase } from "@/integrations/client";
 
 export const Route = createFileRoute("/_authenticated/stocks")({
-  head: () => ({ meta: [{ title: "Stocks — EasyBlue" }] }),
+  head: () => ({ meta: [{ title: "Stocks — EasyBlue Logistics" }] }),
   component: VendorStocksPage,
 });
 
 function VendorStocksPage() {
   const navigate = useNavigate();
-
-  // Connect cleanly to your centralized parent authenticated layout parameters
   const { auth } = Route.useRouteContext() as any;
-  const [items, setItems] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!auth?.userId) return;
-
-    // Local hook synchronizer tracks memory store state updates performantly
-    const syncInventory = () => {
-      // Look up stock records matching the current authenticated profile identifier
-      const currentStocks = stocksStore.byVendor(auth.userId);
-      setItems(currentStocks);
-    };
-
-    syncInventory();
-    const unsubscribe = stocksStore.subscribe(syncInventory);
-    return () => unsubscribe();
-  }, [auth?.userId]);
-
+  
+  const { data: items = [] } = useQuery({
+    queryKey: ["vendor-stocks-self", auth?.userId],
+    enabled: !!auth?.userId,
+    queryFn: async () => {
+      // Resolve this vendor's own vendors.id from their user_id
+      const { data: vendorRow, error: vendorErr } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("user_id", auth.userId)
+        .single();
+      if (vendorErr) throw vendorErr;
+      
+      const { data, error } = await supabase
+        .from("vendor_stocks")
+        .select("*")
+        .eq("vendor_id", vendorRow.id)
+        .order("received_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  
   return (
     <MobileShell>
       <header
@@ -72,10 +77,10 @@ function VendorStocksPage() {
                 key={s.id}
                 className="p-3 rounded-2xl bg-card border border-border flex items-center gap-3"
               >
-                {s.imageDataUrl ? (
+                {s.image_url ? (
                   <img
-                    src={s.imageDataUrl}
-                    alt={s.productType}
+                    src={s.image_url}
+                    alt={s.product_type}
                     className="h-14 w-14 rounded-xl object-cover"
                   />
                 ) : (
@@ -84,9 +89,9 @@ function VendorStocksPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground truncate">{s.productType}</p>
+                  <p className="text-sm font-bold text-foreground truncate">{s.product_type}</p>
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <Calendar className="h-3 w-3" /> Received {s.receivedAt}
+                    <Calendar className="h-3 w-3" /> Received {s.received_at}
                   </p>
                 </div>
                 <div className="text-right">

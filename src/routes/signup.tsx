@@ -111,10 +111,30 @@ function SignupPage() {
 const handleSubmit = async () => {
   setIsSubmitting(true);
   const currentRole = role; // snapshot before async
-  
+
   try {
+    const phoneToCheck = (currentRole === "vendor" ? form.businessPhone : form.phone).trim();
+
+    // Pre-check: phone uniqueness (Supabase Auth never checks this since phone
+    // is only stored in user_metadata, not the Auth `phone` column). Uses a
+    // SECURITY DEFINER RPC so anonymous visitors can check existence without
+    // gaining read access to the `users` table itself.
+    if (phoneToCheck) {
+      const { data: phoneExists, error: phoneCheckError } = await supabase.rpc(
+        "check_phone_exists",
+        { p_phone: phoneToCheck }
+      );
+
+      if (phoneCheckError) {
+        throw new Error("Could not verify phone number right now. Please try again.");
+      }
+      if (phoneExists) {
+        throw new Error("An account with this phone number is already registered. Please log in instead.");
+      }
+    }
+
     let ninPhotoUrl: string | undefined = undefined;
-    
+
     if (currentRole === "rider" && form.ninPhoto) {
       const [meta, base64Data] = form.ninPhoto.split(",");
       const mimeType = meta.match(/:(.*?);/)?.[1] ?? "image/jpeg";
@@ -125,16 +145,16 @@ const handleSubmit = async () => {
       const ext = mimeType.split("/")[1] ?? "jpeg";
       const safeName = form.email.replace(/[^a-zA-Z0-9]/g, "_");
       const filename = Date.now() + "_" + safeName + "." + ext;
-      
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("nin-photos")
         .upload(filename, blob, { contentType: mimeType, upsert: false });
-      
+
       if (uploadError) throw new Error("Failed to upload NIN photo: " + uploadError.message);
       ninPhotoUrl = supabase.storage.from("nin-photos").getPublicUrl(uploadData.path).data.publicUrl;
     }
-    
-    const { error } = await supabase.auth.signUp({
+
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -154,26 +174,50 @@ const handleSubmit = async () => {
         },
       },
     });
-    
-    if (error) {
+
+    const cleanupNinPhoto = async () => {
       if (currentRole === "rider" && ninPhotoUrl) {
         const path = ninPhotoUrl.split("/nin-photos/")[1];
         if (path) await supabase.storage.from("nin-photos").remove([path]);
       }
+    };
+
+    if (error) {
+      await cleanupNinPhoto();
+
+      // Supabase returns a real error (422 "user_already_exists") when
+      // "Confirm email" is OFF and the email is already registered.
+      const msg = (error.message || "").toLowerCase();
+      if (
+        (error as any).code === "user_already_exists" ||
+        msg.includes("already registered") ||
+        msg.includes("already exists")
+      ) {
+        throw new Error("An account with this email already exists. Please log in instead.");
+      }
       throw error;
     }
-    
+
+    // When "Confirm email" is ON, Supabase does NOT return an error for a
+    // duplicate email — to prevent account enumeration it silently returns
+    // `error: null` with a decoy user whose `identities` array is empty.
+    // That's the only client-visible signal a real signup didn't happen.
+    if (signUpData?.user && signUpData.user.identities?.length === 0) {
+      await cleanupNinPhoto();
+      throw new Error("An account with this email already exists. Please log in instead.");
+    }
+
     // Navigate outside try-catch to avoid router redirect being caught as error
     if (currentRole === "vendor" || currentRole === "rider") {
       window.location.href = `/pending-approval?role=${currentRole === "vendor" ? "partner" : "rider"}`;
       return;
     }
-    
+
     toast.success("Account created!", {
       description: "Check your email and click the confirmation link to activate your account.",
     });
     window.location.href = "/login";
-    
+
   } catch (err: any) {
     toast.error("Account Creation Failed", {
       description: err?.message || err?.error_description || "Unexpected error. Please try again.",

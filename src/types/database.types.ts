@@ -140,6 +140,7 @@ export type Database = {
           id: string
           item_description: string
           name_on_parcel: string | null
+          order_type: string | null
           park_name: string | null
           payment_method: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
@@ -174,6 +175,7 @@ export type Database = {
           id?: string
           item_description: string
           name_on_parcel?: string | null
+          order_type?: string | null
           park_name?: string | null
           payment_method?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
@@ -208,6 +210,7 @@ export type Database = {
           id?: string
           item_description?: string
           name_on_parcel?: string | null
+          order_type?: string | null
           park_name?: string | null
           payment_method?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
@@ -483,12 +486,72 @@ export type Database = {
           },
         ]
       }
+      support_messages: {
+        Row: {
+          body: string
+          conversation_user_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          sender_is_admin: boolean
+        }
+        Insert: {
+          body: string
+          conversation_user_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          sender_is_admin?: boolean
+        }
+        Update: {
+          body?: string
+          conversation_user_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          sender_is_admin?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_user_id_fkey"
+            columns: ["conversation_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_conversation_user_id_fkey"
+            columns: ["conversation_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telemetry_events: {
         Row: {
           id: number
           lat: number
           lng: number
           recorded_at: string
+          rider_id: string | null
           shipment_id: string
           speed_kph: number | null
         }
@@ -497,6 +560,7 @@ export type Database = {
           lat: number
           lng: number
           recorded_at?: string
+          rider_id?: string | null
           shipment_id: string
           speed_kph?: number | null
         }
@@ -505,10 +569,18 @@ export type Database = {
           lat?: number
           lng?: number
           recorded_at?: string
+          rider_id?: string | null
           shipment_id?: string
           speed_kph?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "telemetry_events_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "telemetry_events_shipment_id_fkey"
             columns: ["shipment_id"]
@@ -747,6 +819,11 @@ export type Database = {
       }
     }
     Functions: {
+      check_and_record_rate_limit: {
+        Args: { p_bucket: string; p_max_hits: number; p_window_seconds: number }
+        Returns: boolean
+      }
+      check_phone_exists: { Args: { p_phone: string }; Returns: boolean }
       create_db_order: {
         Args: {
           p_amount_to_be_paid?: string
