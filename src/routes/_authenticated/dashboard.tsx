@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Clock,
 } from "lucide-react";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
 import { ProfileHeader } from "@/components/ProfileHeader";
@@ -573,6 +574,8 @@ function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
 
+        < InstallAppBanner/>
+        
         <button
           onClick={onSignOut}
           className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-bold text-sm border border-destructive/10 hover:bg-destructive/15 transition mt-2"

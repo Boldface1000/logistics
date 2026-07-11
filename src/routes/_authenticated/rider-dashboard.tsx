@@ -19,6 +19,7 @@ import {
   Sun,
   Printer,
 } from "lucide-react";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader, useArtificialLoading } from "@/components/PageLoader";
@@ -394,6 +395,9 @@ function SettingsPanel({ user, onSignOut }: { user: any; onSignOut: () => void }
         <span className="text-sm font-semibold text-foreground flex-1 text-left">Dark mode</span>
         <span className="text-xs text-muted-foreground">{theme === "dark" ? "On" : "Off"}</span>
       </button>
+
+      < InstallAppBanner/>
+      
       <button
         onClick={onSignOut}
         className="w-full p-4 rounded-2xl bg-destructive/10 text-destructive flex items-center gap-3 active:scale-[0.99] font-semibold text-sm border border-destructive/10"

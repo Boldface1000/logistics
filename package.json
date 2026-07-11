@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "supabase": "npx supabase gen types typescript --project-id tlezctbfazokshhjppdk > src/types/database.types.ts",
     "cloudflare": "npm run build && wrangler pages deploy dist --project-name=easybluelogistics",
-    "deploy": "npx supabase gen types typescript --project-id tlezctbfazokshhjppdk > src/types/database.types.ts && wrangler pages deploy dist --project-name=easybluelogistics"
+    "deploy": "npm run build && npx supabase gen types typescript --project-id tlezctbfazokshhjppdk > src/types/database.types.ts && wrangler pages deploy dist --project-name=easybluelogistics"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
