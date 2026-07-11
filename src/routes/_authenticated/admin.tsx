@@ -458,21 +458,21 @@ function ScopeShell({
   return (
     <>
       <header
-        className="safe-top px-5 pt-4 pb-5 bg-primary text-primary-foreground"
+        className="safe-top px-5 pt-4 pb-5 bg-primary text-primary-foreground flex justify-between"
         style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex-col items-center justify-between">
           <div className="flex items-center gap-1.5">
             <h1 className="text-2xl font-bold mt-3">Hello, {user.first_name}</h1>
             <p className="text-sm opacity-80">{title} ·Administrative Ecosystem</p>
           </div>
+        </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
               Live Engine
             </span>
           </div>
-        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pt-4">
@@ -633,7 +633,21 @@ function SuperHome({ pendingList, ordersList, userCounts, totalOrdersCount }: {
 <KPI label="Riders" val={String(userCounts?.riders ?? 0)} tone="primary" />
 
       <AdminChatDialog open={chatOpen} onOpenChange={setChatOpen} />
-      <AdminUsersDialog open={usersOpen} onOpenChange={setUsersOpen} />
+      <AdminUsersDialog
+  open={usersOpen}
+  onOpenChange={setUsersOpen}
+  onDeleteUser={async (id) => {
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json();
+      throw new Error(error);
+    }
+  }}
+/>
       <AdminQrShareDialog open={shareOpen} onOpenChange={setShareOpen} />
     </div>
   );
@@ -748,9 +762,17 @@ function ProfileApprovals({
                       href={s.riders.nin_photo_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-primary underline-offset-2 hover:underline inline-block mt-1"
+                      className="block mt-1.5"
                     >
-                      View NIN Photo
+                      <img
+                        src={s.riders.nin_photo_url}
+                        alt="NIN document"
+                        className="w-full max-h-40 object-cover rounded-lg border border-border"
+                        loading="lazy"
+                      />
+                      <span className="text-[10px] text-primary underline-offset-2 hover:underline inline-block mt-1">
+                        View full size
+                      </span>
                     </a>
                   )}
                 </div>

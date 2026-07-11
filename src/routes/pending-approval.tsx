@@ -4,7 +4,7 @@ import { Clock, ShieldCheck, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { PageLoader } from "@/components/PageLoader";
 import { supabase } from "@/integrations/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 type SearchParams = { role?: "partner" | "rider" | "vendor" };
@@ -42,6 +42,7 @@ function PendingApprovalPage() {
   const { data: profileRecord, isLoading: profileLoading } = useQuery({
     queryKey: ["pending-profile-record", userId, role],
     enabled: !!userId && !!role,
+    refetchInterval: 5000,
     queryFn: async () => {
       if (!userId || !role) return null;
       if (role === "rider") {
@@ -78,6 +79,30 @@ function PendingApprovalPage() {
     }
   };
 
+  const approvalStatus = profileRecord?.approval ?? "pending";
+
+  // React to status changes live: approved users get sent straight to their
+  // dashboard, rejected users are signed out immediately so a lingering
+  // session can't be used to poke at protected routes.
+  useEffect(() => {
+    if (!profileRecord) return;
+
+    if (approvalStatus === "approved") {
+      toast.success("Account approved — redirecting…");
+      navigate({ to: role === "rider" ? "/rider-dashboard" : "/vendor-dashboard" });
+      return;
+    }
+
+    if (approvalStatus === "rejected") {
+      supabase.auth.signOut().finally(() => {
+        toast.error("Registration was not approved", {
+          description: "Your account request was declined by an administrator.",
+        });
+      });
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [approvalStatus, profileRecord]);
+
   if (sessionLoading || profileLoading) {
     return (
       <MobileShell>
@@ -85,8 +110,6 @@ function PendingApprovalPage() {
       </MobileShell>
     );
   }
-
-  const approvalStatus = profileRecord?.approval ?? "pending";
 
   return (
     <MobileShell>
@@ -106,34 +129,45 @@ function PendingApprovalPage() {
       <main className="flex-1 overflow-y-auto px-5 pt-6 pb-6 flex flex-col justify-between">
         <div className="space-y-6">
           <div className="p-5 rounded-2xl bg-card border border-border text-center space-y-3">
-            <div className="h-14 w-14 rounded-2xl bg-cta/10 text-cta mx-auto flex items-center justify-center animate-pulse">
+            <div
+              className={`h-14 w-14 rounded-2xl mx-auto flex items-center justify-center ${
+                approvalStatus === "rejected"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-cta/10 text-cta animate-pulse"
+              }`}
+            >
               <Clock className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-lg font-bold text-foreground">Screening in Progress</h2>
+              <h2 className="text-lg font-bold text-foreground">
+                {approvalStatus === "rejected" ? "Application Declined" : "Screening in Progress"}
+              </h2>
               <p className="text-xs text-muted-foreground leading-relaxed px-2">
-                Your {label.toLowerCase()} application is undergoing administrative policy audits.
-                Operations will establish authorization parameters shortly.
+                {approvalStatus === "rejected"
+                  ? `Your ${label.toLowerCase()} application was reviewed and was not approved. You've been signed out. Please contact support if you believe this is a mistake.`
+                  : `Your ${label.toLowerCase()} application is undergoing administrative policy audits. Operations will establish authorization parameters shortly.`}
               </p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
-              Onboarding Checklist
-            </h3>
-            <StatusRow
-              icon={<Mail className="h-4 w-4" />}
-              label="Digital Identity Index Created"
-              done={true}
-            />
-            <StatusRow
-              icon={<ShieldCheck className="h-4 w-4" />}
-              label="Operations Clearance Review"
-              done={approvalStatus === "approved"}
-              active={approvalStatus === "pending"}
-            />
-          </div>
+          {approvalStatus !== "rejected" && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
+                Onboarding Checklist
+              </h3>
+              <StatusRow
+                icon={<Mail className="h-4 w-4" />}
+                label="Digital Identity Index Created"
+                done={true}
+              />
+              <StatusRow
+                icon={<ShieldCheck className="h-4 w-4" />}
+                label="Operations Clearance Review"
+                done={approvalStatus === "approved"}
+                active={approvalStatus === "pending"}
+              />
+            </div>
+          )}
         </div>
 
         <button

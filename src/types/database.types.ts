@@ -603,7 +603,7 @@ export type Database = {
           is_verified: boolean
           last_name: string
           password_hash: string
-          phone: string
+          phone: string | null
           profile_photo_url: string | null
           remember_me: boolean
           role: Database["public"]["Enums"]["user_role"]
@@ -621,7 +621,7 @@ export type Database = {
           is_verified?: boolean
           last_name: string
           password_hash: string
-          phone: string
+          phone?: string | null
           profile_photo_url?: string | null
           remember_me?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -639,7 +639,7 @@ export type Database = {
           is_verified?: boolean
           last_name?: string
           password_hash?: string
-          phone?: string
+          phone?: string | null
           profile_photo_url?: string | null
           remember_me?: boolean
           role?: Database["public"]["Enums"]["user_role"]

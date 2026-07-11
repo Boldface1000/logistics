@@ -92,8 +92,19 @@ function WelcomePage() {
   useEffect(() => {
     async function checkActiveSession() {
       const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        navigate({ to: "/dashboard" });
+      const session = data?.session;
+      if (!session) return;
+
+      const {data:profile} = await supabase .from("users") .select("role, approval") .eq("id", session.user.id) .maybeSingle();
+      const role = profile?.role ?? "customer";
+
+      if (role == "vendor" || role === "rider") {
+        if (profile?.approval !== "approved") {
+          navigate({ to: "/pending-approval", search: {role}});
+          return;
+        }
+        navigate({to: role === "vendor" ? "/vendor-dashboard" : "/rider-dashboard"});
+        return;
       }
     }
     checkActiveSession();

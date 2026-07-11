@@ -92,11 +92,12 @@ function StandardBookingPage() {
       // Pass the delivery type that was selected on this screen
       // (orderType comes from the `type` search param set by the dashboard nav)
       if (orderId) {
-        await supabase
-          .from("orders")
-          .update({ order_type: orderType })
-          .eq("id", orderId);
+        throw new Error("Order was not created - please contact support with details.")
       }
+      await supabase
+        .from("orders")
+        .update({ order_type: orderType })
+        .eq("id", orderId);
 
       toast.success("Booking confirmed ", {
         description: `Reference ${orderId} — Your rider is on the Way 🎉.`,

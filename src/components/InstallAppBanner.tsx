@@ -33,6 +33,12 @@ export function InstallAppBanner() {
     setIsIOS(isIOSDevice());
     setInstalled(isStandaloneMode());
 
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.error("Service worker registration failed:", err);
+      });
+    }
+
     const lastDismissed = Number(localStorage.getItem(DISMISS_KEY) || 0);
     if (lastDismissed && Date.now() - lastDismissed < DISMISS_COOLDOWN_MS) {
       setDismissed(true);
@@ -42,6 +48,7 @@ export function InstallAppBanner() {
       e.preventDefault();
       setInstallPrompt(e);
     };
+
     const onInstalled = () => {
       setInstalled(true);
       localStorage.removeItem(DISMISS_KEY);

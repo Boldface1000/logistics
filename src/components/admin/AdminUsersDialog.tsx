@@ -17,15 +17,16 @@ interface Row {
   approval: string;
   is_verified: boolean;
   created_at: string;
-  disabled_at: string | null;
 }
 
 export function AdminUsersDialog({
   open,
   onOpenChange,
+  onDeleteUser,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onDeleteUser: (id: string) => Promise<unknown>;
 }) {
   const [tab, setTab] = useState<Role>("customer");
   const [rows, setRows] = useState<Row[]>([]);
@@ -49,11 +50,15 @@ export function AdminUsersDialog({
   }, [open, tab]);
 
   const remove = async (id: string) => {
-    if (!confirm("Remove this user's approval? They will lose access.")) return;
-    const { error } = await supabase.from("users").update({ approval: "rejected"}).eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("user access revoked");
-    setRows((r) => r.filter((x) => x.id !== id));
+    if (!confirm("Permanently delete this user from database?.")) return;
+
+    try {
+      await onDeleteUser(id);
+      toast.success("User deleted");
+      setRows((r) => r.filter((x) => x.id ! ==id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    }
   };
 
   return (

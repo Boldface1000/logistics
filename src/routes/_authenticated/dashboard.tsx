@@ -209,7 +209,7 @@ function HomeHero({
               <Truck className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest opacity-70">EasyBlue</p>
+              <p className="text-[10px] uppercase tracking-widest opacity-70">EasyBlue Logistics</p>
               <p className="text-xs font-bold leading-tight">
                 {variant === "vendor" ? "Vendor Node" : "Customer Portal"}
               </p>

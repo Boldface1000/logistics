@@ -219,7 +219,7 @@ const handleSubmit = async () => {
     window.location.href = "/login";
 
   } catch (err: any) {
-    toast.error("Account Creation Failed", {
+    toast.error("Email Already Exists in Database.", {
       description: err?.message || err?.error_description || "Unexpected error. Please try again.",
     });
   } finally {

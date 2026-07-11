@@ -95,6 +95,9 @@ function ParkWaybillPage() {
       });
 
       if (error) throw error;
+      if (!orderId) {
+        throw new Error("Order was not created - please contact support with details.");
+      }
 
       toast.success("Waybill booked", {
         description: `Reference ${orderId} — Your rider is on the Way 🎉.`,
